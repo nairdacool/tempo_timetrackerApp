@@ -1,0 +1,1 @@
+export type Page = 'dashboard' | 'timesheet' | 'projects' | 'reports' | 'approvals' | 'team'
