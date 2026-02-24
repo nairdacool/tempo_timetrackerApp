@@ -1,6 +1,5 @@
 import Sidebar from './Sidebar'
-
-type Page = 'dashboard' | 'timesheet' | 'projects' | 'reports' | 'approvals' | 'team'
+import type{ Page } from '../../types'
 
 const pageTitles: Record<Page, { title: string; subtitle: string }> = {
   dashboard:  { title: 'Dashboard',  subtitle: 'Monday, Feb 23 · Week 8' },

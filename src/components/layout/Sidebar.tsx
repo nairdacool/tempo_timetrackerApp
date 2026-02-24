@@ -1,4 +1,4 @@
-type Page = 'dashboard' | 'timesheet' | 'projects' | 'reports' | 'approvals' | 'team'
+import type { Page } from '../../types'
 
 interface NavItem {
   id: string
