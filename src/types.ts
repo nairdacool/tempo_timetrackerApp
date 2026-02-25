@@ -29,3 +29,20 @@ export interface Project {
   status: 'active' | 'on-hold' | 'completed'
   team: TeamMember[]
 }
+
+export type ReportPeriod = 'this-month' | 'last-month' | 'q1' | 'custom'
+
+export interface WeekBar {
+  label: string
+  hours: number
+}
+
+export interface ProjectSummary {
+  name: string
+  client: string
+  color: string
+  hours: number
+  budgetHours: number
+  billable: boolean
+  status: 'active' | 'on-hold' | 'completed'
+}
