@@ -13,3 +13,19 @@ export interface TimeEntry {
   duration: string    // calculated, e.g. '2h 30m'
   status: EntryStatus
 }
+
+export interface TeamMember {
+  initials: string
+  color: string
+}
+
+export interface Project {
+  id: number
+  name: string
+  client: string
+  color: string
+  loggedHours: number
+  budgetHours: number
+  status: 'active' | 'on-hold' | 'completed'
+  team: TeamMember[]
+}
