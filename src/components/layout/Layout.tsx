@@ -14,23 +14,30 @@ interface LayoutProps {
   currentPage: Page
   onNavigate: (page: Page) => void
   pendingCount: number
+  onSignOut: () => void
+  userEmail: string
   children: React.ReactNode
 }
 
-export default function Layout({ currentPage, onNavigate, pendingCount, children }: LayoutProps) {
+export default function Layout({ currentPage, onNavigate, pendingCount, onSignOut, userEmail, children }: LayoutProps) {
   const { title, subtitle } = pageTitles[currentPage]
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar currentPage={currentPage} onNavigate={onNavigate} pendingCount={pendingCount} />
-
+      <Sidebar
+        currentPage={currentPage}
+        onNavigate={onNavigate}
+        pendingCount={pendingCount}
+        onSignOut={onSignOut}
+        userEmail={userEmail}
+      />
       <main style={{ marginLeft: '240px', flex: 1, display: 'flex', flexDirection: 'column' }}>
         <header style={{
           height: '60px',
           background: 'var(--bg-card)',
           borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center',
-          padding: '0 28px', gap: '16px',
+          padding: '0 28px',
           position: 'sticky', top: 0, zIndex: 50,
         }}>
           <div>
@@ -41,7 +48,6 @@ export default function Layout({ currentPage, onNavigate, pendingCount, children
           <button
             onClick={() => onNavigate('timesheet')}
             style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
               padding: '8px 16px', borderRadius: '8px',
               background: 'var(--accent)', color: 'white',
               border: 'none', fontFamily: 'var(--font-body)',
@@ -50,7 +56,6 @@ export default function Layout({ currentPage, onNavigate, pendingCount, children
             + Log Time
           </button>
         </header>
-
         <div style={{ padding: '28px', flex: 1 }}>
           {children}
         </div>
