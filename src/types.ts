@@ -46,3 +46,19 @@ export interface ProjectSummary {
   billable: boolean
   status: 'active' | 'on-hold' | 'completed'
 }
+
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
+
+export interface Approval {
+  id: number
+  userName: string
+  userInitials: string
+  userColor: string
+  userRole: string
+  weekLabel: string
+  totalHours: number
+  projects: string[]
+  entryCount: number
+  submittedDate: string
+  status: ApprovalStatus
+}

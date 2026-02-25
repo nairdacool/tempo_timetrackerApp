@@ -1,30 +1,30 @@
 import Sidebar from './Sidebar'
-import type{ Page } from '../../types'
+import type { Page } from '../../types'
 
 const pageTitles: Record<Page, { title: string; subtitle: string }> = {
   dashboard:  { title: 'Dashboard',  subtitle: 'Monday, Feb 23 · Week 8' },
-  timesheet:  { title: 'Timesheet',  subtitle: 'Feb 17 – Feb 23, 2026' },
-  projects:   { title: 'Projects',   subtitle: '6 active projects' },
-  reports:    { title: 'Reports',    subtitle: 'February 2026' },
-  approvals:  { title: 'Approvals',  subtitle: '3 pending reviews' },
-  team:       { title: 'Team',       subtitle: '4 members' },
+  timesheet:  { title: 'Timesheet',  subtitle: 'Feb 17 – Feb 23, 2026'   },
+  projects:   { title: 'Projects',   subtitle: '6 active projects'        },
+  reports:    { title: 'Reports',    subtitle: 'February 2026'            },
+  approvals:  { title: 'Approvals',  subtitle: '3 pending reviews'        },
+  team:       { title: 'Team',       subtitle: '4 members'                },
 }
 
 interface LayoutProps {
   currentPage: Page
   onNavigate: (page: Page) => void
+  pendingCount: number
   children: React.ReactNode
 }
 
-export default function Layout({ currentPage, onNavigate, children }: LayoutProps) {
+export default function Layout({ currentPage, onNavigate, pendingCount, children }: LayoutProps) {
   const { title, subtitle } = pageTitles[currentPage]
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar currentPage={currentPage} onNavigate={onNavigate} />
+      <Sidebar currentPage={currentPage} onNavigate={onNavigate} pendingCount={pendingCount} />
 
       <main style={{ marginLeft: '240px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Topbar */}
         <header style={{
           height: '60px',
           background: 'var(--bg-card)',
@@ -51,7 +51,6 @@ export default function Layout({ currentPage, onNavigate, children }: LayoutProp
           </button>
         </header>
 
-        {/* Page content */}
         <div style={{ padding: '28px', flex: 1 }}>
           {children}
         </div>
