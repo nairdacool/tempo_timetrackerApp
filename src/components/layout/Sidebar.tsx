@@ -15,6 +15,7 @@ interface NavGroup {
 interface SidebarProps {
   currentPage: Page
   onNavigate: (page: Page) => void
+  pendingCount: number
 }
 
 const navItems = [
@@ -59,7 +60,7 @@ const navItems = [
   },
 ]
 
-export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, pendingCount }: SidebarProps) {
   return (
     <aside style={{
       width: '240px',
@@ -127,7 +128,7 @@ export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                       marginLeft: 'auto', background: 'var(--accent)',
                       color: 'white', fontSize: '10px', fontWeight: 700,
                       padding: '1px 6px', borderRadius: '10px'
-                    }}>{item.badge}</span>
+                    }}>{pendingCount}</span>
                   )}
                 </button>
               )
