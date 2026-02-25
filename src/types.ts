@@ -62,3 +62,19 @@ export interface Approval {
   submittedDate: string
   status: ApprovalStatus
 }
+
+export type MemberRole = 'Admin' | 'Developer' | 'Designer' | 'Engineer'
+export type MemberStatus = 'active' | 'offline' | 'pending-invite'
+
+export interface Member {
+  id: number
+  name: string
+  initials: string
+  role: MemberRole
+  color: string
+  status: MemberStatus
+  weekHours: number
+  monthHours: number
+  projectCount: number
+  email: string
+}
