@@ -16,6 +16,8 @@ interface SidebarProps {
   currentPage: Page
   onNavigate: (page: Page) => void
   pendingCount: number
+  onSignOut: () => void
+  userEmail: string
 }
 
 const navItems = [
@@ -60,7 +62,7 @@ const navItems = [
   },
 ]
 
-export default function Sidebar({ currentPage, onNavigate, pendingCount }: SidebarProps) {
+export default function Sidebar({ currentPage, onNavigate, pendingCount, onSignOut, userEmail }: SidebarProps) {
   return (
     <aside style={{
       width: '240px',
@@ -138,17 +140,45 @@ export default function Sidebar({ currentPage, onNavigate, pendingCount }: Sideb
       </nav>
 
       {/* User */}
-      <div style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{
-          width: '34px', height: '34px', borderRadius: '50%',
-          background: 'linear-gradient(135deg, var(--accent), var(--amber))',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '13px', fontWeight: 700, color: 'white'
-        }}>JD</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '13px', fontWeight: 600 }}>Jane Doe</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Admin · Acme Corp</div>
+      <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <div style={{
+            width: '34px', height: '34px', borderRadius: '50%',
+            background: 'linear-gradient(135deg, var(--accent), var(--amber))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '12px', fontWeight: 700, color: 'white', flexShrink: 0,
+          }}>
+            {userEmail.slice(0, 2).toUpperCase()}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {userEmail}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Authenticated</div>
+          </div>
         </div>
+        <button
+          onClick={onSignOut}
+          style={{
+            width: '100%', padding: '7px',
+            borderRadius: '8px', border: '1px solid var(--border)',
+            background: 'transparent', color: 'var(--text-muted)',
+            fontFamily: 'var(--font-body)', fontSize: '12px',
+            fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = '#fde8e8'
+            ;(e.currentTarget as HTMLButtonElement).style.color = '#c03030'
+            ;(e.currentTarget as HTMLButtonElement).style.borderColor = '#f5c0c0'
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+            ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'
+          }}
+        >
+          Sign out
+        </button>
       </div>
     </aside>
   )
