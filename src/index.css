@@ -51,3 +51,7 @@ body {
   min-height: 100vh;
   font-size: 14px;
 }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

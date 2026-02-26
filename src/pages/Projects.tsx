@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import type { Project } from '../types'
-import { mockProjects } from '../data/projectsData'
+import { useProjects } from '../hooks/useProjects'
 import ProjectCard from '../components/ui/ProjectCard'
 import NewProjectModal from '../components/ui/NewProjectModal'
 
 export default function Projects() {
-  const [projects,    setProjects]    = useState<Project[]>(mockProjects)
-  const [showModal,   setShowModal]   = useState(false)
-  const [search,      setSearch]      = useState('')
+  const { projects, loading, error, addProject } = useProjects()
+  const [showModal,    setShowModal]    = useState(false)
+  const [search,       setSearch]       = useState('')
   const [clientFilter, setClientFilter] = useState('All Clients')
 
   const clients = ['All Clients', ...Array.from(new Set(projects.map(p => p.client)))]
@@ -18,14 +18,48 @@ export default function Projects() {
     return matchSearch && matchClient
   })
 
-  function handleAddProject(project: Project) {
-    setProjects(prev => [...prev, project])
+  async function handleAddProject(project: Project) {
+    await addProject({
+      name: project.name,
+      client: project.client,
+      color: project.color,
+      budgetHours: project.budgetHours,
+      status: project.status,
+    })
+    setShowModal(false)
   }
 
   function handleCardClick(project: Project) {
-    // Will open a detail view in a future session
-    console.log('Clicked project:', project.name)
+    console.log('Clicked:', project.name)
   }
+
+  // Loading state
+  if (loading) return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '80px', flexDirection: 'column', gap: '16px',
+    }}>
+      <div style={{
+        width: '36px', height: '36px', borderRadius: '50%',
+        border: '3px solid var(--border)',
+        borderTopColor: 'var(--accent)',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading projects…</div>
+    </div>
+  )
+
+  // Error state
+  if (error) return (
+    <div style={{
+      background: '#fde8e8', color: '#c03030',
+      border: '1px solid #f5c0c0',
+      borderRadius: '12px', padding: '20px',
+      fontSize: '13px',
+    }}>
+      ⚠️ {error}
+    </div>
+  )
 
   return (
     <div>
@@ -44,10 +78,8 @@ export default function Projects() {
             fontSize: '13.5px', color: 'var(--text)',
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            borderRadius: '8px',
-            padding: '8px 14px',
-            outline: 'none',
-            width: '260px',
+            borderRadius: '8px', padding: '8px 14px',
+            outline: 'none', width: '260px',
           }}
         />
         <select
@@ -58,16 +90,13 @@ export default function Projects() {
             fontSize: '13px', color: 'var(--text)',
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            borderRadius: '8px',
-            padding: '8px 12px',
-            outline: 'none',
-            cursor: 'pointer',
+            borderRadius: '8px', padding: '8px 12px',
+            outline: 'none', cursor: 'pointer',
           }}
         >
           {clients.map(c => <option key={c}>{c}</option>)}
         </select>
 
-        {/* Summary pill */}
         <div style={{
           fontSize: '12px', color: 'var(--text-muted)',
           background: 'var(--bg-card)',
@@ -93,56 +122,63 @@ export default function Projects() {
         </button>
       </div>
 
-      {/* Grid */}
-      {filtered.length === 0 ? (
+      {/* Empty state */}
+      {filtered.length === 0 && !loading && (
         <div style={{
           textAlign: 'center', padding: '64px',
           color: 'var(--text-muted)',
           fontFamily: 'var(--font-display)', fontSize: '20px',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          marginBottom: '16px',
         }}>
-          No projects match your search
-        </div>
-      ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '16px',
-        }}>
-          {filtered.map(project => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onClick={handleCardClick}
-            />
-          ))}
-
-          {/* Add new card */}
-          <div
-            onClick={() => setShowModal(true)}
-            style={{
-              border: '2px dashed var(--border)',
-              borderRadius: '12px',
-              minHeight: '200px',
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: '8px', cursor: 'pointer',
-              transition: 'border-color 0.15s, background 0.15s',
-              color: 'var(--text-muted)',
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--accent)'
-              ;(e.currentTarget as HTMLDivElement).style.background = 'var(--accent-light)'
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'
-              ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
-            }}
-          >
-            <div style={{ fontSize: '28px', color: 'var(--text-placeholder)' }}>+</div>
-            <div style={{ fontSize: '13px', fontWeight: 600 }}>New Project</div>
-          </div>
+          {projects.length === 0
+            ? 'No projects yet — create your first one!'
+            : 'No projects match your search'}
         </div>
       )}
+
+      {/* Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '16px',
+      }}>
+        {filtered.map(project => (
+          <ProjectCard
+            key={project.id}
+            project={project}
+            onClick={handleCardClick}
+          />
+        ))}
+
+        {/* Add new card */}
+        <div
+          onClick={() => setShowModal(true)}
+          style={{
+            border: '2px dashed var(--border)',
+            borderRadius: '12px',
+            minHeight: '200px',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: '8px', cursor: 'pointer',
+            transition: 'border-color 0.15s, background 0.15s',
+            color: 'var(--text-muted)',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--accent)'
+            ;(e.currentTarget as HTMLDivElement).style.background = 'var(--accent-light)'
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'
+            ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
+          }}
+        >
+          <div style={{ fontSize: '28px', color: 'var(--text-placeholder)' }}>+</div>
+          <div style={{ fontSize: '13px', fontWeight: 600 }}>New Project</div>
+        </div>
+      </div>
 
       {/* Modal */}
       {showModal && (
