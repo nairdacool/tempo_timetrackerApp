@@ -1,53 +1,43 @@
 import { useState } from 'react'
-import type { TimeEntry, EntryStatus } from '../../types'
-
-const projects = [
-  { name: 'Acme Website Redesign', color: '#c8602a' },
-  { name: 'Backend API v2',        color: '#2a5fa8' },
-  { name: 'Mobile App',            color: '#2a7a4f' },
-  { name: 'Data Pipeline',         color: '#c87d2a' },
-]
+import type { Project } from '../../types'
 
 interface EntryFormProps {
-  onAdd: (entry: TimeEntry) => void
+  projects: Project[]
+  onAdd: (entry: {
+    projectId: string
+    description: string
+    date: string
+    startTime: string
+    endTime: string
+    durationMinutes: number
+  }) => void
 }
 
-// Helper: calculate duration string from two HH:MM strings
-function calcDuration(start: string, end: string): string {
-  if (!start || !end) return ''
+function calcMins(start: string, end: string): number {
   const [sh, sm] = start.split(':').map(Number)
   const [eh, em] = end.split(':').map(Number)
-  const totalMins = (eh * 60 + em) - (sh * 60 + sm)
-  if (totalMins <= 0) return ''
-  const h = Math.floor(totalMins / 60)
-  const m = totalMins % 60
-  return `${h}h ${String(m).padStart(2, '0')}m`
+  return (eh * 60 + em) - (sh * 60 + sm)
 }
 
-export default function EntryForm({ onAdd }: EntryFormProps) {
-  const [project,     setProject]     = useState(projects[0].name)
+function formatDuration(mins: number): string {
+  if (mins <= 0) return ''
+  return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`
+}
+
+export default function EntryForm({ projects, onAdd }: EntryFormProps) {
+  const [projectId,   setProjectId]   = useState(projects[0]?.id?.toString() ?? '')
   const [description, setDescription] = useState('')
-  const [date,        setDate]        = useState('2026-02-23')
+  const [date,        setDate]        = useState(new Date().toISOString().slice(0, 10))
   const [startTime,   setStartTime]   = useState('09:00')
   const [endTime,     setEndTime]     = useState('10:00')
 
-  const duration = calcDuration(startTime, endTime)
-  const projectColor = projects.find(p => p.name === project)?.color ?? '#c8602a'
+  const mins     = calcMins(startTime, endTime)
+  const duration = formatDuration(mins)
+  const isValid  = description.trim().length > 0 && mins > 0
 
   function handleAdd() {
-    if (!description || !duration) return
-    const newEntry: TimeEntry = {
-      id: Date.now(),
-      project,
-      projectColor,
-      description,
-      date,
-      startTime,
-      endTime,
-      duration,
-      status: 'draft' as EntryStatus,
-    }
-    onAdd(newEntry)
+    if (!isValid) return
+    onAdd({ projectId, description, date, startTime, endTime, durationMinutes: mins })
     setDescription('')
     setStartTime('09:00')
     setEndTime('10:00')
@@ -57,23 +47,25 @@ export default function EntryForm({ onAdd }: EntryFormProps) {
     <div style={{
       background: 'var(--bg-card)',
       border: '2px dashed var(--border)',
-      borderRadius: '12px',
-      padding: '20px',
+      borderRadius: '12px', padding: '20px',
       marginBottom: '16px',
       display: 'grid',
       gridTemplateColumns: '1fr 1fr 1fr auto',
-      gap: '12px',
-      alignItems: 'end',
+      gap: '12px', alignItems: 'end',
     }}>
-      {/* Project */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
         <label style={labelStyle}>Project</label>
-        <select value={project} onChange={e => setProject(e.target.value)} style={inputStyle}>
-          {projects.map(p => <option key={p.name}>{p.name}</option>)}
+        <select
+          value={projectId}
+          onChange={e => setProjectId(e.target.value)}
+          style={inputStyle}
+        >
+          {projects.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
         </select>
       </div>
 
-      {/* Description */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
         <label style={labelStyle}>Description</label>
         <input
@@ -81,11 +73,11 @@ export default function EntryForm({ onAdd }: EntryFormProps) {
           placeholder="What did you work on?"
           value={description}
           onChange={e => setDescription(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
           style={inputStyle}
         />
       </div>
 
-      {/* Date + Time */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
           <label style={labelStyle}>Date</label>
@@ -103,21 +95,17 @@ export default function EntryForm({ onAdd }: EntryFormProps) {
         </div>
       </div>
 
-      {/* Add button */}
       <button
         onClick={handleAdd}
-        disabled={!description || !duration}
+        disabled={!isValid}
         style={{
-          padding: '9px 20px',
-          borderRadius: '8px',
-          background: description && duration ? 'var(--accent)' : 'var(--bg-subtle)',
-          color: description && duration ? 'white' : 'var(--text-muted)',
-          border: 'none',
-          fontFamily: 'var(--font-body)',
+          padding: '9px 20px', borderRadius: '8px',
+          background: isValid ? 'var(--accent)' : 'var(--bg-subtle)',
+          color: isValid ? 'white' : 'var(--text-muted)',
+          border: 'none', fontFamily: 'var(--font-body)',
           fontSize: '13px', fontWeight: 600,
-          cursor: description && duration ? 'pointer' : 'not-allowed',
-          transition: 'all 0.15s',
-          whiteSpace: 'nowrap',
+          cursor: isValid ? 'pointer' : 'not-allowed',
+          transition: 'all 0.15s', whiteSpace: 'nowrap',
         }}
       >
         + Add Entry
@@ -137,8 +125,6 @@ const inputStyle: React.CSSProperties = {
   fontSize: '13.5px', color: 'var(--text)',
   background: 'var(--bg-subtle)',
   border: '1px solid var(--border)',
-  borderRadius: '8px',
-  padding: '8px 12px',
-  outline: 'none',
-  width: '100%',
+  borderRadius: '8px', padding: '8px 12px',
+  outline: 'none', width: '100%',
 }
