@@ -4,6 +4,7 @@ const statusStyles = {
   approved: { background: 'var(--green-light)', color: 'var(--green)',      label: '✓ Approved' },
   pending:  { background: 'var(--amber-light)', color: 'var(--amber)',      label: '⏳ Pending'  },
   draft:    { background: 'var(--bg-subtle)',   color: 'var(--text-muted)', label: '◌ Draft'    },
+  rejected: { background: '#fde8e8',            color: '#c03030',           label: '✗ Rejected' },
 }
 
 interface DayGroupProps {
@@ -30,7 +31,8 @@ export default function DayGroup({ label, totalHours, entries }: DayGroupProps) 
 
       {/* Entries */}
       {entries.map(entry => {
-        const s = statusStyles[entry.status]
+        const s = statusStyles[entry.status as keyof typeof statusStyles] 
+        ?? { background: 'var(--bg-subtle)', color: 'var(--text-muted)', label: entry.status }
         return (
           <div
             key={entry.id}

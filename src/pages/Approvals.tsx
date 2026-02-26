@@ -1,15 +1,11 @@
 import { useState } from 'react'
-import type { Approval, ApprovalStatus } from '../types'
+import { useApprovals } from '../hooks/useApprovals'
 import ApprovalCard from '../components/ui/ApprovalCard'
 
 type FilterTab = 'pending' | 'approved' | 'rejected' | 'all'
 
-interface ApprovalsProps {
-  approvals: Approval[]
-  onUpdate: (approvals: Approval[]) => void
-}
-
-export default function Approvals({ approvals, onUpdate }: ApprovalsProps) {
+export default function Approvals() {
+  const { approvals, loading, error, changeStatus, approveAll } = useApprovals()
   const [activeTab, setActiveTab] = useState<FilterTab>('pending')
 
   const counts = {
@@ -30,30 +26,49 @@ export default function Approvals({ approvals, onUpdate }: ApprovalsProps) {
     ? approvals
     : approvals.filter(a => a.status === activeTab)
 
-  function handleStatusChange(id: number, status: ApprovalStatus) {
-    onUpdate(approvals.map(a => a.id === id ? { ...a, status } : a))
-  }
+  if (loading) return (
+    <div style={{
+      display: 'flex', alignItems: 'center',
+      justifyContent: 'center', padding: '80px',
+      flexDirection: 'column', gap: '16px',
+    }}>
+      <div style={{
+        width: '36px', height: '36px', borderRadius: '50%',
+        border: '3px solid var(--border)',
+        borderTopColor: 'var(--accent)',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading approvals…</div>
+    </div>
+  )
 
   return (
     <div>
+      {error && (
+        <div style={{
+          background: '#fde8e8', color: '#c03030',
+          borderRadius: '10px', padding: '12px 16px',
+          fontSize: '13px', marginBottom: '16px',
+        }}>
+          ⚠️ {error}
+        </div>
+      )}
+
       {/* Filter tabs */}
       <div style={{
         display: 'flex', gap: '2px',
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
-        borderRadius: '8px',
-        padding: '4px',
-        marginBottom: '20px',
-        width: 'fit-content',
+        borderRadius: '8px', padding: '4px',
+        marginBottom: '20px', width: 'fit-content',
       }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             style={{
-              padding: '6px 16px',
-              borderRadius: '6px', border: 'none',
-              fontFamily: 'var(--font-body)',
+              padding: '6px 16px', borderRadius: '6px',
+              border: 'none', fontFamily: 'var(--font-body)',
               fontSize: '12px', fontWeight: 600,
               cursor: 'pointer', transition: 'all 0.15s',
               background: activeTab === tab.id ? 'var(--accent)' : 'transparent',
@@ -65,7 +80,7 @@ export default function Approvals({ approvals, onUpdate }: ApprovalsProps) {
         ))}
       </div>
 
-      {/* Bulk action bar — only shown when pending tab is active */}
+      {/* Bulk action banner */}
       {activeTab === 'pending' && counts.pending > 0 && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: '12px',
@@ -73,13 +88,12 @@ export default function Approvals({ approvals, onUpdate }: ApprovalsProps) {
           border: '1px solid var(--accent)',
           borderRadius: '10px', padding: '10px 16px',
           marginBottom: '16px',
-          fontSize: '13px', color: 'var(--accent)',
-          fontWeight: 600,
+          fontSize: '13px', color: 'var(--accent)', fontWeight: 600,
         }}>
           <span>⚡ {counts.pending} timesheets waiting for your review</span>
           <div style={{ flex: 1 }} />
           <button
-            onClick={() => onUpdate(approvals.map(a => a.status === 'pending' ? { ...a, status: 'approved' } : a))}
+            onClick={approveAll}
             style={{
               padding: '6px 14px', borderRadius: '7px',
               background: 'var(--green)', color: 'white',
@@ -102,14 +116,16 @@ export default function Approvals({ approvals, onUpdate }: ApprovalsProps) {
           border: '1px solid var(--border)',
           borderRadius: '12px',
         }}>
-          {activeTab === 'pending' ? '🎉 All caught up — no pending approvals' : 'Nothing here yet'}
+          {activeTab === 'pending'
+            ? '🎉 All caught up — no pending approvals'
+            : 'Nothing here yet'}
         </div>
       ) : (
         filtered.map(approval => (
           <ApprovalCard
             key={approval.id}
             approval={approval}
-            onStatusChange={handleStatusChange}
+            onStatusChange={(id, status) => changeStatus(id as string, status as 'approved' | 'rejected')}
           />
         ))
       )}

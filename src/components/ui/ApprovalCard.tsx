@@ -3,7 +3,7 @@ import type { Approval, ApprovalStatus } from '../../types'
 
 interface ApprovalCardProps {
   approval: Approval
-  onStatusChange: (id: number, status: ApprovalStatus) => void
+  onStatusChange: (id: string, status: ApprovalStatus) => void
 }
 
 const statusStyles: Record<ApprovalStatus, { border: string; badge: string; badgeText: string; label: string }> = {

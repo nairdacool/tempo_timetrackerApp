@@ -238,3 +238,143 @@ export async function fetchReportData(startDate: string, endDate: string) {
   if (error) throw new Error(error.message)
   return data ?? []
 }
+
+// ===== APPROVALS =====
+
+export async function fetchApprovals() {
+  const { data, error } = await supabase
+    .from('approvals')
+    .select(`
+      *,
+      profiles!approvals_user_id_fkey (full_name, initials, color, role)
+    `)
+    .order('submitted_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+
+  // Fetch entry counts for each approval in parallel
+  const approvalsWithCounts = await Promise.all(
+    data.map(async a => {
+      const { count } = await supabase
+        .from('time_entries')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', a.user_id)
+        .gte('date', a.week_start)
+        .lte('date', a.week_end)
+
+      return {
+        id:            a.id,
+        userName:      a.profiles?.full_name  ?? 'Unknown',
+        userInitials:  a.profiles?.initials   ?? '??',
+        userColor:     a.profiles?.color      ?? '#c8602a',
+        userRole:      a.profiles?.role       ?? 'Developer',
+        weekLabel:     formatWeekLabel(a.week_start, a.week_end),
+        totalHours:    a.total_hours,
+        projects:      [],
+        entryCount:    count ?? 0,   // ← real count now
+        submittedDate: new Date(a.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        status:        a.status as 'pending' | 'approved' | 'rejected',
+      }
+    })
+  )
+
+  return approvalsWithCounts
+}
+
+export async function submitWeekForApproval(
+  weekStart: string,
+  weekEnd: string,
+): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Calculate total hours for the week
+  const { data: entries, error: entriesErr } = await supabase
+    .from('time_entries')
+    .select('duration_minutes')
+    .eq('user_id', user.id)
+    .gte('date', weekStart)
+    .lte('date', weekEnd)
+
+  if (entriesErr) throw new Error(entriesErr.message)
+
+  const totalMins  = (entries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
+  const totalHours = Math.round((totalMins / 60) * 10) / 10
+
+  // Check if approval already exists for this week
+  const { data: existing } = await supabase
+    .from('approvals')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('week_start', weekStart)
+    .single()
+
+  if (existing) {
+    // Update existing approval back to pending
+    const { error } = await supabase
+      .from('approvals')
+      .update({ status: 'pending', total_hours: totalHours, submitted_at: new Date().toISOString() })
+      .eq('id', existing.id)
+    if (error) throw new Error(error.message)
+  } else {
+    // Create new approval
+    const { error } = await supabase
+      .from('approvals')
+      .insert({
+        user_id:     user.id,
+        week_start:  weekStart,
+        week_end:    weekEnd,
+        total_hours: totalHours,
+        status:      'pending',
+      })
+    if (error) throw new Error(error.message)
+  }
+
+  // Mark all draft entries for this week as pending
+  await supabase
+    .from('time_entries')
+    .update({ status: 'pending' })
+    .eq('user_id', user.id)
+    .eq('status', 'draft')
+    .gte('date', weekStart)
+    .lte('date', weekEnd)
+}
+
+export async function updateApprovalStatus(
+  id: string,
+  status: 'approved' | 'rejected'
+): Promise<void> {
+  // First get the approval to find the week range and user
+  const { data: approval, error: fetchErr } = await supabase
+    .from('approvals')
+    .select('user_id, week_start, week_end')
+    .eq('id', id)
+    .single()
+
+  if (fetchErr) throw new Error(fetchErr.message)
+
+  // Update the approval status
+  const { error: approvalErr } = await supabase
+    .from('approvals')
+    .update({ status, reviewed_at: new Date().toISOString() })
+    .eq('id', id)
+
+  if (approvalErr) throw new Error(approvalErr.message)
+
+  // Update all time entries for that user/week to match
+  const { error: entriesErr } = await supabase
+    .from('time_entries')
+    .update({ status })
+    .eq('user_id', approval.user_id)
+    .gte('date', approval.week_start)
+    .lte('date', approval.week_end)
+
+  if (entriesErr) throw new Error(entriesErr.message)
+}
+
+function formatWeekLabel(start: string, end: string): string {
+  const s = new Date(start + 'T00:00:00')
+  const e = new Date(end   + 'T00:00:00')
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `${fmt(s)} – ${fmt(e)}`
+}

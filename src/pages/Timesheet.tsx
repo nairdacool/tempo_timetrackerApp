@@ -3,6 +3,7 @@ import { useTimeEntries } from '../hooks/useTimeEntries'
 import WeekNavigator from '../components/ui/WeekNavigator'
 import EntryForm from '../components/ui/EntryForm'
 import DayGroup from '../components/ui/DayGroup'
+import { submitWeekForApproval } from '../lib/queries'
 
 // Generates a week object starting from a Monday date
 function getWeekDates(monday: Date) {
@@ -49,6 +50,7 @@ function minsToLabel(mins: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
+
 export default function Timesheet() {
   const [weekOffset, setWeekOffset] = useState(0)
   const currentMonday = new Date(todayMonday)
@@ -71,16 +73,58 @@ export default function Timesheet() {
   const totalMins  = entries.reduce((sum, e) => sum + durationToMins(e.duration), 0)
   const totalHours = minsToLabel(totalMins)
 
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted,  setSubmitted]  = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  async function handleSubmit() {
+    try {
+      setSubmitting(true)
+      setSubmitError(null)
+      await submitWeekForApproval(
+        currentWeek.dates[0],
+        currentWeek.dates[6]
+      )
+      setSubmitted(true)
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div>
       <WeekNavigator
-        weekLabel={currentWeek.label}
-        totalHours={totalHours || '0h'}
-        onPrev={() => setWeekOffset(o => o - 1)}
-        onNext={() => setWeekOffset(o => o + 1)}
-        onSubmit={() => {}}
-      />
+      weekLabel={currentWeek.label}
+      totalHours={totalHours || '0h'}
+      onPrev={() => { setWeekOffset(o => o - 1); setSubmitted(false) }}
+      onNext={() => { setWeekOffset(o => o + 1); setSubmitted(false) }}
+      onSubmit={handleSubmit}
+      submitting={submitting}
+    />
+        {submitted && (
+      <div style={{
+        background: 'var(--green-light)', color: 'var(--green)',
+        border: '1px solid var(--green)',
+        borderRadius: '10px', padding: '12px 16px',
+        fontSize: '13px', fontWeight: 600,
+        marginBottom: '16px',
+        display: 'flex', alignItems: 'center', gap: '8px',
+      }}>
+        ✓ Timesheet submitted for approval — entries are now pending review.
+      </div>
+    )}
 
+    {submitError && (
+      <div style={{
+        background: '#fde8e8', color: '#c03030',
+        borderRadius: '10px', padding: '12px 16px',
+        fontSize: '13px', marginBottom: '16px',
+      }}>
+        ⚠️ {submitError}
+      </div>
+    )}
       {error && (
         <div style={{
           background: '#fde8e8', color: '#c03030',

@@ -146,8 +146,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                     approved: { bg: 'var(--green-light)', color: 'var(--green)',      label: '✓ Approved' },
                     pending:  { bg: 'var(--amber-light)', color: 'var(--amber)',      label: '⏳ Pending'  },
                     draft:    { bg: 'var(--bg-subtle)',   color: 'var(--text-muted)', label: '◌ Draft'    },
+                    rejected: { bg: '#fde8e8',            color: '#c03030',           label: '✗ Rejected' },
                   }
-                  const s = statusStyles[entry.status]
+                  const s = statusStyles[entry.status as keyof typeof statusStyles]
+                    ?? { bg: 'var(--bg-subtle)', color: 'var(--text-muted)', label: entry.status }
                   return (
                     <tr
                       key={entry.id}
