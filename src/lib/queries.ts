@@ -103,7 +103,115 @@ export async function insertTimeEntry(entry: {
   if (error) throw new Error(error.message)
 }
 
-// Helper used internally
+
+// ===== DASHBOARD =====
+
+export async function fetchDashboardStats() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const now       = new Date()
+  const monday    = getThisMonday(now)
+  const weekStart = monday.toISOString().slice(0, 10)
+  const weekEnd   = new Date(monday.getTime() + 6 * 86400000).toISOString().slice(0, 10)
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+
+  // Fetch this week's entries
+  const { data: weekEntries, error: weekErr } = await supabase
+    .from('time_entries')
+    .select('duration_minutes, date, project_id')
+    .eq('user_id', user.id)
+    .gte('date', weekStart)
+    .lte('date', weekEnd)
+
+  if (weekErr) throw new Error(weekErr.message)
+
+  // Fetch this month's entries
+  const { data: monthEntries, error: monthErr } = await supabase
+    .from('time_entries')
+    .select('duration_minutes')
+    .eq('user_id', user.id)
+    .gte('date', monthStart)
+
+  if (monthErr) throw new Error(monthErr.message)
+
+  // Fetch active project count
+  const { count: projectCount, error: projErr } = await supabase
+    .from('projects')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'active')
+
+  if (projErr) throw new Error(projErr.message)
+
+  // Fetch pending approvals count
+  const { count: pendingCount, error: appErr } = await supabase
+    .from('approvals')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('status', 'pending')
+
+  if (appErr) throw new Error(appErr.message)
+
+  const weekMins  = (weekEntries  ?? []).reduce((s, e) => s + e.duration_minutes, 0)
+  const monthMins = (monthEntries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
+
+  return {
+    weekHours:    Math.round((weekMins  / 60) * 10) / 10,
+    monthHours:   Math.round((monthMins / 60) * 10) / 10,
+    projectCount: projectCount ?? 0,
+    pendingCount: pendingCount ?? 0,
+    weekEntries:  weekEntries  ?? [],
+    weekStart,
+  }
+}
+
+export async function fetchRecentEntries() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('time_entries')
+    .select(`
+      *,
+      projects (name, color)
+    `)
+    .eq('user_id', user.id)
+    .order('date', { ascending: false })
+    .order('start_time', { ascending: false })
+    .limit(5)
+
+  if (error) throw new Error(error.message)
+
+  return data.map(e => ({
+    id: e.id,
+    project: e.projects?.name ?? 'Unknown',
+    projectColor: e.projects?.color ?? '#c8602a',
+    description: e.description,
+    date: formatEntryDate(e.date),
+    duration: minsToDisplay(e.duration_minutes),
+    status: e.status as 'approved' | 'pending' | 'draft',
+  }))
+}
+
+// ===== PRIVATE HELPERS =====
+
+function getThisMonday(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function formatEntryDate(dateStr: string): string {
+  const today     = new Date().toISOString().slice(0, 10)
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  if (dateStr === today)     return 'Today'
+  if (dateStr === yesterday) return 'Yesterday'
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 function minsToDisplay(mins: number): string {
   const h = Math.floor(mins / 60)
   const m = mins % 60
