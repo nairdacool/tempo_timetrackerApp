@@ -1,48 +1,55 @@
 import { useState } from 'react'
 import type { ReportPeriod } from '../types'
-import { weekBars, projectSummaries, periodLabels } from '../data/reportsData'
+import { useReports } from '../hooks/useReports'
 import PeriodFilter from '../components/ui/PeriodFilter'
 import HoursChart from '../components/ui/HoursChart'
 import ProjectBreakdownTable from '../components/ui/ProjectBreakdownTable'
 
 export default function Reports() {
-  const [period,    setPeriod]    = useState<ReportPeriod>('this-month')
-  const [dateFrom,  setDateFrom]  = useState('2026-02-01')
-  const [dateTo,    setDateTo]    = useState('2026-02-28')
+  const [period,   setPeriod]   = useState<ReportPeriod>('this-month')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo,   setDateTo]   = useState('')
 
-  // For custom period, use the date range as the label
-  const periodLabel = period === 'custom'
-    ? `${dateFrom} → ${dateTo}`
-    : periodLabels[period]
+  // Only pass dates to hook when Apply is clicked
+  const [appliedFrom, setAppliedFrom] = useState('')
+  const [appliedTo,   setAppliedTo]   = useState('')
 
-  // For custom we show empty state until user has set dates
-  const bars      = weekBars[period]
-  const summaries = projectSummaries[period]
+  const { data, loading, error } = useReports(period, appliedFrom, appliedTo)
 
-  const totalHours    = summaries.reduce((s, p) => s + p.hours, 0)
-  const billableHours = summaries.filter(p => p.billable).reduce((s, p) => s + p.hours, 0)
+  const totalHours    = data?.summaries.reduce((s, p) => s + p.hours, 0) ?? 0
+  const billableHours = data?.summaries.filter(p => p.billable).reduce((s, p) => s + p.hours, 0) ?? 0
   const billablePct   = totalHours > 0 ? Math.round((billableHours / totalHours) * 100) : 0
   const avgPerDay     = totalHours > 0 ? Math.round((totalHours / 20) * 10) / 10 : 0
+
+  function handleApply() {
+    setAppliedFrom(dateFrom)
+    setAppliedTo(dateTo)
+  }
+
+  const isCustomReady = period === 'custom' && appliedFrom && appliedTo
 
   return (
     <div>
       {/* Toolbar */}
       <div style={{
         display: 'flex', alignItems: 'center',
-        gap: '12px', marginBottom: '24px',
-        flexWrap: 'wrap',
+        gap: '12px', marginBottom: '24px', flexWrap: 'wrap',
       }}>
-        <PeriodFilter active={period} onChange={setPeriod} />
+        <PeriodFilter active={period} onChange={p => {
+          setPeriod(p)
+          // Reset applied custom dates when switching away
+          if (p !== 'custom') {
+            setAppliedFrom('')
+            setAppliedTo('')
+          }
+        }} />
 
-        {/* Custom date range inputs — only shown when Custom is selected */}
         {period === 'custom' && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             background: 'var(--bg-card)',
             border: '1px solid var(--accent)',
-            borderRadius: '8px',
-            padding: '4px 12px',
-            animation: 'fadeIn 0.2s ease',
+            borderRadius: '8px', padding: '4px 12px',
           }}>
             <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
               From
@@ -63,26 +70,58 @@ export default function Reports() {
               onChange={e => setDateTo(e.target.value)}
               style={dateInputStyle}
             />
-            {/* Apply button — in future this will fetch filtered data */}
-            <button style={{
-              padding: '5px 12px', borderRadius: '6px',
-              background: 'var(--accent)', color: 'white',
-              border: 'none', fontFamily: 'var(--font-body)',
-              fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-            }}>
+            <button
+              onClick={handleApply}
+              disabled={!dateFrom || !dateTo || dateFrom > dateTo}
+              style={{
+                padding: '5px 12px', borderRadius: '6px',
+                background: dateFrom && dateTo && dateFrom <= dateTo ? 'var(--accent)' : 'var(--bg-subtle)',
+                color: dateFrom && dateTo && dateFrom <= dateTo ? 'white' : 'var(--text-muted)',
+                border: 'none', fontFamily: 'var(--font-body)',
+                fontSize: '12px', fontWeight: 600,
+                cursor: dateFrom && dateTo ? 'pointer' : 'not-allowed',
+              }}
+            >
               Apply
             </button>
           </div>
         )}
 
         <div style={{ flex: 1 }} />
-
         <button style={exportBtnStyle}>Export PDF</button>
         <button style={exportBtnStyle}>Export CSV</button>
       </div>
 
-      {/* Custom period empty state */}
-      {period === 'custom' && summaries.length === 0 ? (
+      {/* Loading */}
+      {loading && (
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'center', padding: '80px',
+          flexDirection: 'column', gap: '16px',
+        }}>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '50%',
+            border: '3px solid var(--border)',
+            borderTopColor: 'var(--accent)',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading report…</div>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div style={{
+          background: '#fde8e8', color: '#c03030',
+          borderRadius: '12px', padding: '16px',
+          fontSize: '13px', marginBottom: '16px',
+        }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      {/* Custom empty state */}
+      {!loading && period === 'custom' && !isCustomReady && (
         <div style={{
           textAlign: 'center', padding: '80px 40px',
           background: 'var(--bg-card)',
@@ -96,30 +135,28 @@ export default function Reports() {
           <div style={{ fontSize: '13px' }}>
             Choose a From and To date above, then hit Apply to load your report.
           </div>
-          <div style={{ fontSize: '12px', marginTop: '8px', color: 'var(--text-placeholder)' }}>
-            (Custom range data fetching will be wired up once we connect Supabase)
-          </div>
         </div>
-      ) : (
+      )}
+
+      {/* Report content */}
+      {!loading && !error && data && (period !== 'custom' || isCustomReady) && (
         <>
-          {/* Summary stat cards */}
+          {/* Stat cards */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '16px',
-            marginBottom: '24px',
+            gap: '16px', marginBottom: '24px',
           }}>
             {[
-              { label: 'Total Hours',    value: `${totalHours}h`,      sub: periodLabel              },
+              { label: 'Total Hours',    value: `${totalHours}h`,      sub: data.periodLabel           },
               { label: 'Billable Hours', value: `${billableHours}h`,   sub: `${billablePct}% of total` },
-              { label: 'Avg per Day',    value: `${avgPerDay}h`,       sub: 'Working days'           },
-              { label: 'Projects',       value: `${summaries.length}`, sub: 'Tracked this period'    },
+              { label: 'Avg per Day',    value: `${avgPerDay}h`,       sub: 'Working days'             },
+              { label: 'Projects',       value: `${data.summaries.length}`, sub: 'Tracked this period' },
             ].map(card => (
               <div key={card.label} style={{
                 background: 'var(--bg-card)',
                 border: '1px solid var(--border)',
-                borderRadius: '12px',
-                padding: '18px 20px',
+                borderRadius: '12px', padding: '18px 20px',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
               }}>
                 <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: '8px' }}>
@@ -133,8 +170,24 @@ export default function Reports() {
             ))}
           </div>
 
-          <HoursChart bars={bars} periodLabel={periodLabel} />
-          <ProjectBreakdownTable summaries={summaries} />
+          {/* No entries state */}
+          {data.summaries.length === 0 ? (
+            <div style={{
+              textAlign: 'center', padding: '64px',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-display)', fontSize: '20px',
+            }}>
+              No time entries found for this period
+            </div>
+          ) : (
+            <>
+              <HoursChart bars={data.bars} periodLabel={data.periodLabel} />
+              <ProjectBreakdownTable summaries={data.summaries} />
+            </>
+          )}
         </>
       )}
     </div>
@@ -147,14 +200,12 @@ const exportBtnStyle: React.CSSProperties = {
   border: '1px solid var(--border)',
   color: 'var(--text-muted)',
   fontFamily: 'var(--font-body)',
-  fontSize: '13px', fontWeight: 600,
-  cursor: 'pointer',
+  fontSize: '13px', fontWeight: 600, cursor: 'pointer',
 }
 
 const dateInputStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
   fontSize: '13px', color: 'var(--text)',
   background: 'transparent',
-  border: 'none', outline: 'none',
-  cursor: 'pointer',
+  border: 'none', outline: 'none', cursor: 'pointer',
 }

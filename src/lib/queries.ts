@@ -217,3 +217,24 @@ function minsToDisplay(mins: number): string {
   const m = mins % 60
   return m > 0 ? `${h}h ${String(m).padStart(2, '0')}m` : `${h}h`
 }
+
+// ===== REPORTS =====
+
+export async function fetchReportData(startDate: string, endDate: string) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { data, error } = await supabase
+    .from('time_entries')
+    .select(`
+      *,
+      projects (name, client, color, budget_hours, status)
+    `)
+    .eq('user_id', user.id)
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
