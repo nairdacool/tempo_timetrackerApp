@@ -1,0 +1,147 @@
+import { useState, useEffect } from 'react'
+import type { ReportPeriod, WeekBar, ProjectSummary } from '../types'
+import { fetchReportData } from '../lib/queries'
+
+interface ReportsData {
+  bars:        WeekBar[]
+  summaries:   ProjectSummary[]
+  periodLabel: string
+}
+
+function getPeriodDates(period: ReportPeriod, customFrom?: string, customTo?: string) {
+  const now   = new Date()
+  const year  = now.getFullYear()
+  const month = now.getMonth()
+
+  switch (period) {
+    case 'this-month':
+      return {
+        start: `${year}-${String(month + 1).padStart(2, '0')}-01`,
+        end:   `${year}-${String(month + 1).padStart(2, '0')}-${new Date(year, month + 1, 0).getDate()}`,
+        label: now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      }
+    case 'last-month': {
+      const lm = new Date(year, month - 1, 1)
+      const lastDay = new Date(year, month, 0).getDate()
+      return {
+        start: `${lm.getFullYear()}-${String(lm.getMonth() + 1).padStart(2, '0')}-01`,
+        end:   `${lm.getFullYear()}-${String(lm.getMonth() + 1).padStart(2, '0')}-${lastDay}`,
+        label: lm.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      }
+    }
+    case 'q1':
+      return {
+        start: `${year}-01-01`,
+        end:   `${year}-03-31`,
+        label: `Q1 ${year}`,
+      }
+    case 'custom':
+      return {
+        start: customFrom ?? `${year}-01-01`,
+        end:   customTo   ?? now.toISOString().slice(0, 10),
+        label: `${customFrom} → ${customTo}`,
+      }
+  }
+}
+
+// Groups entries into weekly buckets and returns WeekBar[]
+function buildWeekBars(entries: any[], start: string, end: string): WeekBar[] {
+  const bars: WeekBar[] = []
+  const startDate = new Date(start + 'T00:00:00')
+  const endDate   = new Date(end   + 'T00:00:00')
+
+  // Build week buckets
+  let weekStart = new Date(startDate)
+  let weekNum   = 1
+
+  while (weekStart <= endDate) {
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 6)
+
+    const weekStartStr = weekStart.toISOString().slice(0, 10)
+    const weekEndStr   = weekEnd.toISOString().slice(0, 10)
+
+    const weekMins = entries
+      .filter(e => e.date >= weekStartStr && e.date <= weekEndStr)
+      .reduce((s: number, e: any) => s + e.duration_minutes, 0)
+
+    // Label: show month + week number for multi-month periods
+    const monthName = weekStart.toLocaleDateString('en-US', { month: 'short' })
+    bars.push({
+      label: `${monthName} W${weekNum}`,
+      hours: Math.round((weekMins / 60) * 10) / 10,
+    })
+
+    weekStart.setDate(weekStart.getDate() + 7)
+    weekNum++
+    if (weekNum > 4) weekNum = 1
+  }
+
+  return bars
+}
+
+// Groups entries by project and returns ProjectSummary[]
+function buildProjectSummaries(entries: any[]): ProjectSummary[] {
+  const map = new Map<string, ProjectSummary>()
+
+  for (const e of entries) {
+    const key  = e.project_id
+    const proj = e.projects
+
+    if (!map.has(key)) {
+      map.set(key, {
+        name:        proj?.name        ?? 'Unknown',
+        client:      proj?.client      ?? 'Internal',
+        color:       proj?.color       ?? '#c8602a',
+        hours:       0,
+        budgetHours: proj?.budget_hours ?? 80,
+        billable:    false,
+        status:      proj?.status      ?? 'active',
+      })
+    }
+
+    const summary = map.get(key)!
+    summary.hours = Math.round((summary.hours * 60 + e.duration_minutes) / 60 * 10) / 10
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.hours - a.hours)
+}
+
+export function useReports(period: ReportPeriod, customFrom: string, customTo: string) {
+  const [data,    setData]    = useState<ReportsData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState<string | null>(null)
+
+  useEffect(() => {
+    // Don't fetch if custom period has no valid range
+    if (period === 'custom' && (!customFrom || !customTo || customFrom > customTo)) {
+      setLoading(false)
+      setData(null)
+      return
+    }
+
+    async function load() {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const { start, end, label } = getPeriodDates(period, customFrom, customTo)
+        const entries = await fetchReportData(start, end)
+
+        setData({
+          bars:        buildWeekBars(entries, start, end),
+          summaries:   buildProjectSummaries(entries),
+          periodLabel: label,
+        })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load report')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    load()
+  }, [period, customFrom, customTo])
+
+  return { data, loading, error }
+}

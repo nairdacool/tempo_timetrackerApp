@@ -50,7 +50,7 @@ export interface ProjectSummary {
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 
 export interface Approval {
-  id: number
+  id: string
   userName: string
   userInitials: string
   userColor: string

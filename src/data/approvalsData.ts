@@ -2,7 +2,7 @@ import type { Approval } from '../types'
 
 export const mockApprovals: Approval[] = [
   {
-    id: 1,
+    id: '1',
     userName: 'Mark Kim',
     userInitials: 'MK',
     userColor: '#2a5fa8',
@@ -15,7 +15,7 @@ export const mockApprovals: Approval[] = [
     status: 'pending',
   },
   {
-    id: 2,
+    id: '2',
     userName: 'Anna Rodriguez',
     userInitials: 'AR',
     userColor: '#2a7a4f',
@@ -28,7 +28,7 @@ export const mockApprovals: Approval[] = [
     status: 'pending',
   },
   {
-    id: 3,
+    id: '3',
     userName: 'Tom Lee',
     userInitials: 'TL',
     userColor: '#c87d2a',
@@ -41,7 +41,7 @@ export const mockApprovals: Approval[] = [
     status: 'pending',
   },
   {
-    id: 4,
+    id: '4',
     userName: 'Jane Doe',
     userInitials: 'JD',
     userColor: '#c8602a',
@@ -54,7 +54,7 @@ export const mockApprovals: Approval[] = [
     status: 'approved',
   },
   {
-    id: 5,
+    id: '5',
     userName: 'Mark Kim',
     userInitials: 'MK',
     userColor: '#2a5fa8',

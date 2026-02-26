@@ -1,116 +1,177 @@
 import { useState } from 'react'
-import type { TimeEntry } from '../types'
-import { mockEntries } from '../data/timesheetData'
+import { useTimeEntries } from '../hooks/useTimeEntries'
 import WeekNavigator from '../components/ui/WeekNavigator'
 import EntryForm from '../components/ui/EntryForm'
 import DayGroup from '../components/ui/DayGroup'
+import { submitWeekForApproval } from '../lib/queries'
 
-// Week labels for navigation (we'll keep it simple with static labels for now)
-const weeks = [
-  { label: 'Feb 10 – Feb 16, 2026', dates: ['2026-02-10','2026-02-11','2026-02-12','2026-02-13','2026-02-14'] },
-  { label: 'Feb 17 – Feb 23, 2026', dates: ['2026-02-17','2026-02-18','2026-02-19','2026-02-20','2026-02-21','2026-02-22','2026-02-23'] },
-  { label: 'Feb 24 – Mar 02, 2026', dates: ['2026-02-24','2026-02-25','2026-02-26','2026-02-27','2026-02-28'] },
-]
-
-// Format 'YYYY-MM-DD' → 'Monday, Feb 23'
-function formatDayLabel(dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00')
-  return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+// Generates a week object starting from a Monday date
+function getWeekDates(monday: Date) {
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d.toISOString().slice(0, 10)
+  })
+  const start = dates[0]
+  const end   = dates[6]
+  const fmt   = (s: string) => new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const year  = new Date(end).getFullYear()
+  return { label: `${fmt(start)} – ${fmt(end)}, ${year}`, dates }
 }
 
-// Parse 'Xh YYm' → total minutes
+// Get the Monday of any given date
+function getMonday(date: Date): Date {
+  const d = new Date(date)
+  const day = d.getDay()
+  const diff = day === 0 ? -6 : 1 - day // handle Sunday
+  d.setDate(d.getDate() + diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+// Start from current week's Monday
+const todayMonday = getMonday(new Date())
+
+function formatDayLabel(dateStr: string): string {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'long', month: 'short', day: 'numeric',
+  })
+}
+
 function durationToMins(dur: string): number {
   const h = parseInt(dur.match(/(\d+)h/)?.[1] ?? '0')
   const m = parseInt(dur.match(/(\d+)m/)?.[1] ?? '0')
   return h * 60 + m
 }
 
-// Format total minutes → 'Xh Ym'
 function minsToLabel(mins: number): string {
   const h = Math.floor(mins / 60)
   const m = mins % 60
   return m > 0 ? `${h}h ${m}m` : `${h}h`
 }
 
+
 export default function Timesheet() {
-  const [weekIndex, setWeekIndex]   = useState(1) // start on current week
-  const [entries, setEntries]       = useState<TimeEntry[]>(mockEntries)
-  const [submitted, setSubmitted]   = useState(false)
+  const [weekOffset, setWeekOffset] = useState(0)
+  const currentMonday = new Date(todayMonday)
+  currentMonday.setDate(todayMonday.getDate() + weekOffset * 7)
+  const currentWeek = getWeekDates(currentMonday)
 
-  const currentWeek = weeks[weekIndex]
+  const { entries, projects, loading, error, addEntry } = useTimeEntries({
+    weekDates: currentWeek.dates,
+  })
 
-  // Filter entries to only those in the current week
-  const weekEntries = entries.filter(e => currentWeek.dates.includes(e.date))
-
-  // Group entries by date, sorted newest first
   const grouped = currentWeek.dates
-    .slice()
-    .reverse()
+    .slice().reverse()
     .map(date => ({
       date,
       label: formatDayLabel(date),
-      entries: weekEntries.filter(e => e.date === date),
+      entries: entries.filter(e => e.date === date),
     }))
     .filter(g => g.entries.length > 0)
 
-  // Calculate total hours for the week
-  const totalMins = weekEntries.reduce((sum, e) => sum + durationToMins(e.duration), 0)
+  const totalMins  = entries.reduce((sum, e) => sum + durationToMins(e.duration), 0)
   const totalHours = minsToLabel(totalMins)
 
-  function handleAddEntry(entry: TimeEntry) {
-    setEntries(prev => [entry, ...prev])
-    setSubmitted(false)
-  }
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted,  setSubmitted]  = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  function handleSubmit() {
-    setEntries(prev =>
-      prev.map(e =>
-        currentWeek.dates.includes(e.date) && e.status === 'draft'
-          ? { ...e, status: 'pending' }
-          : e
+  async function handleSubmit() {
+    try {
+      setSubmitting(true)
+      setSubmitError(null)
+      await submitWeekForApproval(
+        currentWeek.dates[0],
+        currentWeek.dates[6]
       )
-    )
-    setSubmitted(true)
+      setSubmitted(true)
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <div>
       <WeekNavigator
-        weekLabel={currentWeek.label}
-        totalHours={totalHours}
-        onPrev={() => setWeekIndex(i => Math.max(0, i - 1))}
-        onNext={() => setWeekIndex(i => Math.min(weeks.length - 1, i + 1))}
-        onSubmit={handleSubmit}
-      />
+      weekLabel={currentWeek.label}
+      totalHours={totalHours || '0h'}
+      onPrev={() => { setWeekOffset(o => o - 1); setSubmitted(false) }}
+      onNext={() => { setWeekOffset(o => o + 1); setSubmitted(false) }}
+      onSubmit={handleSubmit}
+      submitting={submitting}
+    />
+        {submitted && (
+      <div style={{
+        background: 'var(--green-light)', color: 'var(--green)',
+        border: '1px solid var(--green)',
+        borderRadius: '10px', padding: '12px 16px',
+        fontSize: '13px', fontWeight: 600,
+        marginBottom: '16px',
+        display: 'flex', alignItems: 'center', gap: '8px',
+      }}>
+        ✓ Timesheet submitted for approval — entries are now pending review.
+      </div>
+    )}
 
-      {submitted && (
+    {submitError && (
+      <div style={{
+        background: '#fde8e8', color: '#c03030',
+        borderRadius: '10px', padding: '12px 16px',
+        fontSize: '13px', marginBottom: '16px',
+      }}>
+        ⚠️ {submitError}
+      </div>
+    )}
+      {error && (
         <div style={{
-          background: 'var(--green-light)', color: 'var(--green)',
-          border: '1px solid var(--green)',
+          background: '#fde8e8', color: '#c03030',
           borderRadius: '10px', padding: '12px 16px',
-          fontSize: '13px', fontWeight: 600,
-          marginBottom: '16px',
-          display: 'flex', alignItems: 'center', gap: '8px',
+          fontSize: '13px', marginBottom: '16px',
         }}>
-          ✓ Timesheet submitted for approval — draft entries are now pending review.
+          ⚠️ {error}
         </div>
       )}
 
-      <EntryForm onAdd={handleAddEntry} />
+      {projects.length > 0 && (
+        <EntryForm projects={projects} onAdd={addEntry} />
+      )}
 
-      {grouped.length === 0 ? (
+      {loading ? (
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          justifyContent: 'center', padding: '60px',
+          flexDirection: 'column', gap: '16px',
+        }}>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            border: '3px solid var(--border)',
+            borderTopColor: 'var(--accent)',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading entries…</div>
+        </div>
+      ) : grouped.length === 0 ? (
         <div style={{
           textAlign: 'center', padding: '48px',
-          color: 'var(--text-muted)', fontFamily: 'var(--font-display)', fontSize: '20px',
+          color: 'var(--text-muted)',
+          fontFamily: 'var(--font-display)', fontSize: '20px',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
         }}>
-          No entries this week yet
+          No entries this week — add your first one above!
         </div>
       ) : (
         grouped.map(group => (
           <DayGroup
             key={group.date}
             label={group.label}
-            totalHours={minsToLabel(group.entries.reduce((sum, e) => sum + durationToMins(e.duration), 0))}
+            totalHours={minsToLabel(
+              group.entries.reduce((sum, e) => sum + durationToMins(e.duration), 0)
+            )}
             entries={group.entries}
           />
         ))

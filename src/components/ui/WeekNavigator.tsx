@@ -4,9 +4,10 @@ interface WeekNavigatorProps {
   onPrev: () => void
   onNext: () => void
   onSubmit: () => void
+  submitting?: boolean
 }
 
-export default function WeekNavigator({ weekLabel, totalHours, onPrev, onNext, onSubmit }: WeekNavigatorProps) {
+export default function WeekNavigator({ weekLabel, totalHours, onPrev, onNext, onSubmit, submitting }: WeekNavigatorProps) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: '12px',
@@ -36,13 +37,20 @@ export default function WeekNavigator({ weekLabel, totalHours, onPrev, onNext, o
         Export CSV
       </button>
 
-      <button onClick={onSubmit} style={{
-        padding: '8px 16px', borderRadius: '8px',
-        background: 'var(--accent)', color: 'white',
-        border: 'none', fontFamily: 'var(--font-body)',
-        fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-      }}>
-        Submit for Approval
+      <button
+        onClick={onSubmit}
+        disabled={submitting}
+        style={{
+          padding: '8px 16px', borderRadius: '8px',
+          background: submitting ? 'var(--bg-subtle)' : 'var(--accent)',
+          color: submitting ? 'var(--text-muted)' : 'white',
+          border: 'none', fontFamily: 'var(--font-body)',
+          fontSize: '13px', fontWeight: 600,
+          cursor: submitting ? 'not-allowed' : 'pointer',
+          transition: 'all 0.15s',
+        }}
+      >
+        {submitting ? 'Submitting…' : 'Submit for Approval'}
       </button>
     </div>
   )
