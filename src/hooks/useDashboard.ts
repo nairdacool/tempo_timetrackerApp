@@ -17,18 +17,18 @@ interface RecentEntry {
 }
 
 interface DashboardData {
-  weekHours:     number
-  monthHours:    number
-  projectCount:  number
-  pendingCount:  number
-  weekBars:      DayBar[]
+  weekHours: number
+  monthHours: number
+  projectCount: number
+  pendingCount: number
+  weekBars: DayBar[]
   recentEntries: RecentEntry[]
 }
 
-export function useDashboard() {
-  const [data,    setData]    = useState<DashboardData | null>(null)
+export function useDashboard(refreshKey = 0) {
+  const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -43,7 +43,7 @@ export function useDashboard() {
 
         // Build day bars for the current week
         const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        const monday    = new Date(stats.weekStart + 'T00:00:00')
+        const monday = new Date(stats.weekStart + 'T00:00:00')
 
         const weekBars: DayBar[] = dayLabels.map((label, i) => {
           const date = new Date(monday)
@@ -58,10 +58,10 @@ export function useDashboard() {
         })
 
         setData({
-          weekHours:     stats.weekHours,
-          monthHours:    stats.monthHours,
-          projectCount:  stats.projectCount,
-          pendingCount:  stats.pendingCount,
+          weekHours: stats.weekHours,
+          monthHours: stats.monthHours,
+          projectCount: stats.projectCount,
+          pendingCount: stats.pendingCount,
           weekBars,
           recentEntries: recent,
         })
@@ -71,9 +71,8 @@ export function useDashboard() {
         setLoading(false)
       }
     }
-
     load()
-  }, [])
+  }, [refreshKey])
 
   return { data, loading, error }
 }

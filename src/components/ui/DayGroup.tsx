@@ -11,9 +11,10 @@ interface DayGroupProps {
   label: string      // e.g. 'Monday, Feb 23'
   totalHours: string // e.g. '4.5h'
   entries: TimeEntry[]
+  onEntryClick: (entry: TimeEntry) => void 
 }
 
-export default function DayGroup({ label, totalHours, entries }: DayGroupProps) {
+export default function DayGroup({ label, totalHours, entries, onEntryClick }: DayGroupProps) {
   return (
     <div style={{ marginBottom: '16px' }}>
       {/* Day header */}
@@ -36,6 +37,7 @@ export default function DayGroup({ label, totalHours, entries }: DayGroupProps) 
         return (
           <div
             key={entry.id}
+            onClick={() => onEntryClick(entry)}
             style={{
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',

@@ -2,13 +2,16 @@ import { useDashboard } from '../hooks/useDashboard'
 import StatCard from '../components/ui/StatCard'
 import TimerWidget from '../components/ui/TimerWidget'
 import type { Page } from '../types'
+import { useState } from 'react'
 
 interface DashboardProps {
   onNavigate: (page: Page) => void
 }
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
-  const { data, loading, error } = useDashboard()
+  const [refreshKey, setRefreshKey] = useState(0)
+  const { data, loading, error } = useDashboard(refreshKey)
+  
 
   if (loading) return (
     <div style={{
@@ -73,7 +76,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       </div>
 
       {/* Timer */}
-      <TimerWidget />
+      <TimerWidget onEntrySaved={() => setRefreshKey(k => k + 1)} />
 
       {/* Main grid */}
       <div style={{
