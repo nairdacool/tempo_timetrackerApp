@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { TimeEntry } from '../types'
 import { fetchTimeEntries, insertTimeEntry, updateTimeEntry, deleteTimeEntry } from '../lib/queries'
-import { fetchProjects } from '../lib/queries'
+import { fetchActiveProjects } from '../lib/queries'
 import type { Project } from '../types'
 
 interface UseTimeEntriesOptions {
@@ -20,7 +20,7 @@ export function useTimeEntries({ weekDates }: UseTimeEntriesOptions) {
       setError(null)
       const [entriesData, projectsData] = await Promise.all([
         fetchTimeEntries(weekDates),
-        fetchProjects(),
+        fetchActiveProjects(),
       ])
       setEntries(entriesData)
       setProjects(projectsData)

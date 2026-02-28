@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Project } from '../../types'
-import { fetchProjects, insertTimeEntry } from '../../lib/queries'
+import { fetchActiveProjects, insertTimeEntry } from '../../lib/queries'
 import TimeEntryModal from './TimeEntryModal'
 
 function pad(n: number) { return String(n).padStart(2, '0') }
@@ -23,7 +23,7 @@ export default function TimerWidget({ onEntrySaved }: TimerWidgetProps) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    fetchProjects().then(data => {
+    fetchActiveProjects().then(data => {
       setProjects(data)
       if (data.length > 0) setProjectId(data[0].id.toString())
     })

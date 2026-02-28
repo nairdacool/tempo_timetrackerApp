@@ -4,19 +4,20 @@ import type { Project } from '../../types'
 const statusStyles = {
   'active':    { background: 'var(--green-light)', color: 'var(--green)',      label: 'Active'   },
   'on-hold':   { background: 'var(--amber-light)', color: 'var(--amber)',      label: 'On Hold'  },
-  'completed': { background: 'var(--blue-light)',  color: 'var(--blue)',       label: 'Done'     },
+  'completed': { background: '#AECBFA', color: '#1a4fb5', label: 'Completed' },
+  'archived':  { background: '#D0D3DA', color: '#6b6b80', label: 'Archived'  },
 }
 
 interface ProjectCardProps {
   project: Project
-  onClick: (project: Project) => void
+  onClick:  (project: Project) => void 
 }
 
 export default function ProjectCard({ project, onClick }: ProjectCardProps) {
   const [hovered, setHovered] = useState(false)
   const pct = Math.round((project.loggedHours / project.budgetHours) * 100)
   const isOverBudget = pct >= 90
-  const s = statusStyles[project.status]
+  const s = statusStyles[project.status] ?? { background: '#f0f0f0', color: '#888888', label: project.status }
 
   return (
     <div
@@ -99,26 +100,8 @@ export default function ProjectCard({ project, onClick }: ProjectCardProps) {
         {/* Footer: avatars + status */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Team avatars */}
-          <div style={{ display: 'flex' }}>
-            {project.team.map((member, i) => (
-              <div
-                key={i}
-                title={member.initials}
-                style={{
-                  width: '26px', height: '26px',
-                  borderRadius: '50%',
-                  background: member.color,
-                  border: '2px solid var(--bg-card)',
-                  marginLeft: i === 0 ? 0 : '-7px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '9px', fontWeight: 700, color: 'white',
-                  zIndex: project.team.length - i,
-                  position: 'relative',
-                }}
-              >
-                {member.initials}
-              </div>
-            ))}
+          <div>
+
           </div>
 
           {/* Status badge */}
