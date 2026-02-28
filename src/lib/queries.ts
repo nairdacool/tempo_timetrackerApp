@@ -20,14 +20,14 @@ export async function fetchProjects(): Promise<Project[]> {
       .reduce((sum: number, e: { duration_minutes: number }) => sum + e.duration_minutes, 0)
 
     return {
-      id:           p.id,
-      name:         p.name,
-      client:       p.client,
-      color:        p.color,
-      loggedHours:  Math.round((loggedMinutes / 60) * 10) / 10,
-      budgetHours:  p.budget_hours,
-      status:       p.status,
-      team:         [],
+      id:          p.id,
+      name:        p.name,
+      client:      p.client,
+      color:       p.color,
+      loggedHours: Math.round((loggedMinutes / 60) * 10) / 10,
+      budgetHours: p.budget_hours,
+      status:      p.status,
+      team:        [],
     }
   })
 }
