@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import type { Project, TimeEntry } from "../../types";
+import toast from "react-hot-toast";
 
 interface TimeEntryModalProps {
   mode: "create" | "edit";
   projects: Project[];
-  initialProjectId?: string  
+  initialProjectId?: string;
   // For create (from timer)
   initialStartTime?: string;
   initialEndTime?: string;
-  initialNote?: string  
+  initialNote?: string;
   // For edit
   entry?: TimeEntry;
   onSave: (data: {
@@ -39,10 +40,10 @@ function formatDuration(mins: number): string {
 export default function TimeEntryModal({
   mode,
   projects,
-  initialProjectId, 
+  initialProjectId,
   initialStartTime,
   initialEndTime,
-  initialNote,  
+  initialNote,
   entry,
   onSave,
   onDelete,
@@ -53,7 +54,9 @@ export default function TimeEntryModal({
   const [projectId, setProjectId] = useState(
     entry?.projectId ?? initialProjectId ?? projects[0]?.id?.toString() ?? "",
   );
-  const [description, setDescription] = useState(entry?.description ?? initialNote ?? '');
+  const [description, setDescription] = useState(
+    entry?.description ?? initialNote ?? "",
+  );
   const [date, setDate] = useState(entry?.date ?? today);
   const [startTime, setStartTime] = useState(
     entry?.startTime ?? initialStartTime ?? "09:00",
@@ -91,6 +94,7 @@ export default function TimeEntryModal({
         endTime,
         durationMinutes: mins,
       });
+      toast.success(mode === "create" ? "Time entry saved!" : "Entry updated!");
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -103,6 +107,7 @@ export default function TimeEntryModal({
     try {
       setSaving(true);
       await onDelete();
+      toast.success("Entry deleted");
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
