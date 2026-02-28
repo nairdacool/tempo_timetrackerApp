@@ -1,11 +1,10 @@
 import { useDashboard } from '../hooks/useDashboard'
 import StatCard from '../components/ui/StatCard'
 import TimerWidget from '../components/ui/TimerWidget'
-import type { Page } from '../types'
 import { useState } from 'react'
 
 interface DashboardProps {
-  onNavigate: (page: Page) => void
+  onNavigate: (path: string) => void
 }
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
@@ -259,14 +258,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               Quick Actions
             </div>
             {[
-              { label: '+ Log Time',       page: 'timesheet', color: 'var(--accent)'      },
-              { label: '📁 View Projects',  page: 'projects',  color: 'var(--blue)'        },
-              { label: '📊 Open Reports',   page: 'reports',   color: 'var(--green)'       },
-              { label: '✓ Approvals',       page: 'approvals', color: 'var(--amber)'       },
+              { label: '+ Log Time',       page: '/timesheet', color: 'var(--accent)'      },
+              { label: '📁 View Projects',  page: '/projects',  color: 'var(--blue)'        },
+              { label: '📊 Open Reports',   page: '/reports',   color: 'var(--green)'       },
+              { label: '✓ Approvals',       page: '/approvals', color: 'var(--amber)'       },
             ].map(action => (
               <button
                 key={action.label}
-                onClick={() => onNavigate(action.page as Page)}
+                onClick={() => onNavigate(action.page)}
                 style={{
                   display: 'block', width: '100%',
                   padding: '9px 14px', borderRadius: '8px',

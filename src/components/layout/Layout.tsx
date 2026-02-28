@@ -1,62 +1,82 @@
+import { useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import type { Page } from '../../types'
-
-const pageTitles: Record<Page, { title: string; subtitle: string }> = {
-  dashboard:  { title: 'Dashboard',  subtitle: 'Monday, Feb 23 · Week 8' },
-  timesheet:  { title: 'Timesheet',  subtitle: 'Feb 17 – Feb 23, 2026'   },
-  projects:   { title: 'Projects',   subtitle: '6 active projects'        },
-  reports:    { title: 'Reports',    subtitle: 'February 2026'            },
-  approvals:  { title: 'Approvals',  subtitle: '3 pending reviews'        },
-  team:       { title: 'Team',       subtitle: '4 members'                },
-}
 
 interface LayoutProps {
-  currentPage: Page
-  onNavigate: (page: Page) => void
+  children:     React.ReactNode
+  onNavigate:   (path: string) => void
   pendingCount: number
-  onSignOut: () => void
-  userEmail: string
-  children: React.ReactNode
+  onSignOut:    () => void
+  userEmail:    string
 }
 
-export default function Layout({ currentPage, onNavigate, pendingCount, onSignOut, userEmail, children }: LayoutProps) {
-  const { title, subtitle } = pageTitles[currentPage]
+const pageMeta: Record<string, { title: string; subtitle: string }> = {
+  '/dashboard': { title: 'Dashboard',  subtitle: 'Your overview'       },
+  '/timesheet': { title: 'Timesheet',  subtitle: 'Log your hours'      },
+  '/projects':  { title: 'Projects',   subtitle: 'Manage your work'    },
+  '/reports':   { title: 'Reports',    subtitle: 'Analyze your time'   },
+  '/approvals': { title: 'Approvals',  subtitle: 'Review timesheets'   },
+  '/team':      { title: 'Team',       subtitle: 'Manage your members' },
+}
+
+export default function Layout({
+  children, onNavigate, pendingCount, onSignOut, userEmail,
+}: LayoutProps) {
+  const location = useLocation()
+  const meta = pageMeta[location.pathname] ?? { title: 'Tempo', subtitle: '' }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
       <Sidebar
-        currentPage={currentPage}
         onNavigate={onNavigate}
         pendingCount={pendingCount}
         onSignOut={onSignOut}
         userEmail={userEmail}
       />
-      <main style={{ marginLeft: '240px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <header style={{
-          height: '60px',
-          background: 'var(--bg-card)',
-          borderBottom: '1px solid var(--border)',
+      <main style={{
+        marginLeft: '240px', flex: 1,
+        display: 'flex', flexDirection: 'column',
+        minHeight: '100vh',
+      }}>
+        {/* Topbar */}
+        <div style={{
+          height: '64px', padding: '0 32px',
           display: 'flex', alignItems: 'center',
-          padding: '0 28px',
+          justifyContent: 'space-between',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--bg-card)',
           position: 'sticky', top: 0, zIndex: 50,
         }}>
           <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px' }}>{title}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{subtitle}</div>
+            <div style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '20px', color: 'var(--text)',
+              lineHeight: 1,
+            }}>
+              {meta.title}
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              {meta.subtitle}
+            </div>
           </div>
-          <div style={{ flex: 1 }} />
+
           <button
-            onClick={() => onNavigate('timesheet')}
+            onClick={() => onNavigate('/timesheet')}
             style={{
-              padding: '8px 16px', borderRadius: '8px',
+              padding: '9px 20px', borderRadius: '8px',
               background: 'var(--accent)', color: 'white',
               border: 'none', fontFamily: 'var(--font-body)',
-              fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-            }}>
+              fontSize: '13px', fontWeight: 700,
+              cursor: 'pointer', transition: 'opacity 0.15s',
+            }}
+            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.opacity = '0.85'}
+            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.opacity = '1'}
+          >
             + Log Time
           </button>
-        </header>
-        <div style={{ padding: '28px', flex: 1 }}>
+        </div>
+
+        {/* Page content */}
+        <div style={{ flex: 1, padding: '28px 32px' }}>
           {children}
         </div>
       </main>
