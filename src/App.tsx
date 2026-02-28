@@ -15,8 +15,9 @@ import { supabase } from './lib/supabase'
 
 // Inner app — only renders when user is logged in
 function AuthenticatedApp() {
-  const { user, loading, signOut } = useAuth()
-  const [currentPage,  setCurrentPage]  = useState<Page>('dashboard')
+  const { user, loading, signOut, isAdmin } = useAuth()
+  const [currentPage, setCurrentPage] = useState<Page>('dashboard')
+  const guardedNavigate = (page: Page) => setCurrentPage(safePage(page))
   const [pendingCount, setPendingCount] = useState(0)
 
   // ✅ useEffect MUST come before any early returns
@@ -47,8 +48,15 @@ function AuthenticatedApp() {
 
   if (!user) return <Login />
 
+    function safePage(page: Page): Page {
+      if (!isAdmin && (page === 'approvals' || page === 'team')) {
+        return 'dashboard'
+      }
+      return page
+    }
+
   const pages: Record<Page, React.ReactNode> = {
-    dashboard: <Dashboard onNavigate={setCurrentPage} />,
+    dashboard: <Dashboard onNavigate={guardedNavigate} />,
     timesheet: <Timesheet />,
     projects:  <Projects />,
     reports:   <Reports />,
@@ -59,7 +67,7 @@ function AuthenticatedApp() {
   return (
     <Layout
       currentPage={currentPage}
-      onNavigate={setCurrentPage}
+      onNavigate={guardedNavigate}
       pendingCount={pendingCount}
       onSignOut={signOut}
       userEmail={user.email ?? ''}

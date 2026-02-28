@@ -7,22 +7,29 @@ import type { Project } from '../types'
 export async function fetchProjects(): Promise<Project[]> {
   const { data, error } = await supabase
     .from('projects')
-    .select('*')
+    .select(`
+      *,
+      time_entries (duration_minutes)
+    `)
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)
 
-  // Map Supabase column names to our frontend type
-  return data.map(p => ({
-    id: p.id,
-    name: p.name,
-    client: p.client,
-    color: p.color,
-    loggedHours: 0,       // will calculate from time_entries later
-    budgetHours: p.budget_hours,
-    status: p.status,
-    team: [],             // will join with profiles later
-  }))
+  return data.map(p => {
+    const loggedMinutes = (p.time_entries ?? [])
+      .reduce((sum: number, e: { duration_minutes: number }) => sum + e.duration_minutes, 0)
+
+    return {
+      id:           p.id,
+      name:         p.name,
+      client:       p.client,
+      color:        p.color,
+      loggedHours:  Math.round((loggedMinutes / 60) * 10) / 10,
+      budgetHours:  p.budget_hours,
+      status:       p.status,
+      team:         [],
+    }
+  })
 }
 
 export async function createProject(
