@@ -1,26 +1,23 @@
-import { useState } from 'react'
-import { AuthProvider } from './context/AuthContext'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { useAuth } from './context/useAuth'
-import type { Page } from './types'
-import Layout from './components/layout/Layout'
+import { AuthProvider } from './context/AuthContext'
+import { supabase } from './lib/supabase'
 import Login from './pages/Login'
+import Layout from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Timesheet from './pages/Timesheet'
 import Projects from './pages/Projects'
 import Reports from './pages/Reports'
 import Approvals from './pages/Approvals'
 import Team from './pages/Team'
-import { useEffect } from 'react'
-import { supabase } from './lib/supabase'
 
-// Inner app — only renders when user is logged in
 function AuthenticatedApp() {
   const { user, loading, signOut, isAdmin } = useAuth()
-  const [currentPage, setCurrentPage] = useState<Page>('dashboard')
-  const guardedNavigate = (page: Page) => setCurrentPage(safePage(page))
   const [pendingCount, setPendingCount] = useState(0)
+  const navigate = useNavigate()
+  const location = useLocation()
 
-  // ✅ useEffect MUST come before any early returns
   useEffect(() => {
     if (!user) return
     supabase
@@ -30,7 +27,6 @@ function AuthenticatedApp() {
       .then(({ count }) => setPendingCount(count ?? 0))
   }, [user])
 
-  // Early returns AFTER all hooks
   if (loading) return (
     <div style={{
       minHeight: '100vh', display: 'flex',
@@ -48,36 +44,33 @@ function AuthenticatedApp() {
 
   if (!user) return <Login />
 
-    function safePage(page: Page): Page {
-      if (!isAdmin && (page === 'approvals' || page === 'team')) {
-        return 'dashboard'
-      }
-      return page
-    }
-
-  const pages: Record<Page, React.ReactNode> = {
-    dashboard: <Dashboard onNavigate={guardedNavigate} />,
-    timesheet: <Timesheet />,
-    projects:  <Projects />,
-    reports:   <Reports />,
-    approvals: <Approvals />,
-    team:      <Team />,
+  // Redirect non-admins away from admin pages
+  const adminOnly = ['/approvals', '/team']
+  if (!isAdmin && adminOnly.includes(location.pathname)) {
+    return <Navigate to="/dashboard" replace />
   }
 
   return (
     <Layout
-      currentPage={currentPage}
-      onNavigate={guardedNavigate}
+      onNavigate={(path) => navigate(path)}
       pendingCount={pendingCount}
       onSignOut={signOut}
       userEmail={user.email ?? ''}
     >
-      {pages[currentPage]}
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard onNavigate={navigate} />} />
+        <Route path="/timesheet"  element={<Timesheet />} />
+        <Route path="/projects"   element={<Projects />} />
+        <Route path="/reports"    element={<Reports />} />
+        <Route path="/approvals"  element={<Approvals />} />
+        <Route path="/team"       element={<Team />} />
+        <Route path="*"           element={<Navigate to="/dashboard" replace />} />
+      </Routes>
     </Layout>
   )
 }
 
-// Outer app — wraps everything in the auth provider
 export default function App() {
   return (
     <AuthProvider>
