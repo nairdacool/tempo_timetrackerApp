@@ -3,6 +3,7 @@ import type { Project } from '../types'
 import { useProjects } from '../hooks/useProjects'
 import ProjectCard from '../components/ui/ProjectCard'
 import NewProjectModal from '../components/ui/NewProjectModal'
+import toast from 'react-hot-toast'
 
 export default function Projects() {
   const { projects, loading, error, addProject } = useProjects()
@@ -19,14 +20,20 @@ export default function Projects() {
   })
 
   async function handleAddProject(project: Project) {
-    await addProject({
+    try {
+      await addProject({
       name: project.name,
       client: project.client,
       color: project.color,
       budgetHours: project.budgetHours,
       status: project.status,
     })
+    toast.success(`Project "${project.name}" created!`)
     setShowModal(false)
+    } catch {
+      toast.error('Failed to create project')
+    }
+    
   }
 
   function handleCardClick(project: Project) {
