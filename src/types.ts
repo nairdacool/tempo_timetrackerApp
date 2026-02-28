@@ -3,9 +3,10 @@ export type Page = 'dashboard' | 'timesheet' | 'projects' | 'reports' | 'approva
 export type EntryStatus = 'approved' | 'pending' | 'draft'
 
 export interface TimeEntry {
-  id: number
+  id: string
   project: string
   projectColor: string
+  projectId: string // added projectId for easier editing
   description: string
   date: string        // 'YYYY-MM-DD'
   startTime: string   // 'HH:MM'

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { TimeEntry } from '../types'
-import { fetchTimeEntries, insertTimeEntry } from '../lib/queries'
+import { fetchTimeEntries, insertTimeEntry, updateTimeEntry, deleteTimeEntry } from '../lib/queries'
 import { fetchProjects } from '../lib/queries'
 import type { Project } from '../types'
 
@@ -49,5 +49,34 @@ export function useTimeEntries({ weekDates }: UseTimeEntriesOptions) {
     }
   }
 
-  return { entries, projects, loading, error, addEntry }
+  async function editEntry(
+  id: string,
+  entry: {
+    projectId: string
+    description: string
+    date: string
+    startTime: string
+    endTime: string
+    durationMinutes: number
+  }
+) {
+  try {
+    await updateTimeEntry(id, entry)
+    await load()
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Failed to update entry')
+  }
+}
+
+async function removeEntry(id: string) {
+  try {
+    await deleteTimeEntry(id)
+    await load()
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'Failed to delete entry')
+  }
+}
+
+
+  return { entries, projects, loading, error, addEntry, editEntry, removeEntry }
 }

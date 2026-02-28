@@ -4,6 +4,8 @@ import WeekNavigator from '../components/ui/WeekNavigator'
 import EntryForm from '../components/ui/EntryForm'
 import DayGroup from '../components/ui/DayGroup'
 import { submitWeekForApproval } from '../lib/queries'
+import type { TimeEntry } from '../types'
+import TimeEntryModal from '../components/ui/TimeEntryModal'
 
 // Generates a week object starting from a Monday date
 function getWeekDates(monday: Date) {
@@ -56,11 +58,11 @@ export default function Timesheet() {
   const currentMonday = new Date(todayMonday)
   currentMonday.setDate(todayMonday.getDate() + weekOffset * 7)
   const currentWeek = getWeekDates(currentMonday)
-
-  const { entries, projects, loading, error, addEntry } = useTimeEntries({
+  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
+  const { entries, projects, loading, error, addEntry, editEntry, removeEntry } = useTimeEntries({
     weekDates: currentWeek.dates,
   })
-
+  
   const grouped = currentWeek.dates
     .slice().reverse()
     .map(date => ({
@@ -91,6 +93,22 @@ export default function Timesheet() {
     } finally {
       setSubmitting(false)
     }
+  }
+  async function handleEditSave(data: {
+    projectId: string
+    description: string
+    date: string
+    startTime: string
+    endTime: string
+    durationMinutes: number
+  }) {
+    if (!editingEntry) return
+    await editEntry(editingEntry.id, data)
+  }
+
+  async function handleDelete() {
+    if (!editingEntry) return
+    await removeEntry(editingEntry.id)
   }
 
   return (
@@ -173,9 +191,20 @@ export default function Timesheet() {
               group.entries.reduce((sum, e) => sum + durationToMins(e.duration), 0)
             )}
             entries={group.entries}
+            onEntryClick={setEditingEntry} 
           />
         ))
       )}
+      {editingEntry && (
+      <TimeEntryModal
+        mode="edit"
+        projects={projects}
+        entry={editingEntry}
+        onSave={handleEditSave}
+        onDelete={handleDelete}
+        onClose={() => setEditingEntry(null)}
+      />
+    )}
     </div>
   )
 }

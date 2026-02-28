@@ -74,6 +74,7 @@ export async function fetchTimeEntries(weekDates: string[]): Promise<TimeEntry[]
     id: e.id,
     project: e.projects?.name ?? 'Unknown',
     projectColor: e.projects?.color ?? '#c8602a',
+     projectId:    e.project_id,        // ← added projectId for editing
     description: e.description,
     date: e.date,
     startTime: e.start_time.slice(0, 5),
@@ -384,4 +385,41 @@ function formatWeekLabel(start: string, end: string): string {
   const e = new Date(end   + 'T00:00:00')
   const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   return `${fmt(s)} – ${fmt(e)}`
+}
+
+// ===== EDITING ENTRIES =====
+
+export async function updateTimeEntry(
+  id: string,
+  entry: {
+    projectId: string
+    description: string
+    date: string
+    startTime: string
+    endTime: string
+    durationMinutes: number
+  }
+): Promise<void> {
+  const { error } = await supabase
+    .from('time_entries')
+    .update({
+      project_id:       entry.projectId,
+      description:      entry.description,
+      date:             entry.date,
+      start_time:       entry.startTime,
+      end_time:         entry.endTime,
+      duration_minutes: entry.durationMinutes,
+    })
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+}
+
+export async function deleteTimeEntry(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('time_entries')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
 }
