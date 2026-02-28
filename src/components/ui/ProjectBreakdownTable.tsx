@@ -7,7 +7,8 @@ interface ProjectBreakdownTableProps {
 const statusStyles = {
   'active':    { background: 'var(--green-light)', color: 'var(--green)',      label: 'Active'  },
   'on-hold':   { background: 'var(--amber-light)', color: 'var(--amber)',      label: 'On Hold' },
-  'completed': { background: 'var(--blue-light)',  color: 'var(--blue)',       label: 'Done'    },
+  'completed': { background: '#e8f0fe', color: '#1a4fb5', label: 'Completed' },
+  'archived':  { background: '#D0D3DA', color: '#6b6b80', label: 'Archived'  },
 }
 
 export default function ProjectBreakdownTable({ summaries }: ProjectBreakdownTableProps) {
@@ -68,7 +69,7 @@ export default function ProjectBreakdownTable({ summaries }: ProjectBreakdownTab
           {summaries.map(p => {
             const pct = Math.round((p.hours / p.budgetHours) * 100)
             const isOver = pct >= 100
-            const s = statusStyles[p.status]
+            const s = statusStyles[p.status] ?? { background: '#f0f0f4', color: '#6b6b80', label: p.status }
             return (
               <tr
                 key={p.name}
