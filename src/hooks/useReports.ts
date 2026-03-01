@@ -113,6 +113,7 @@ export function useReports(period: ReportPeriod, customFrom: string, customTo: s
   const [error,   setError]   = useState<string | null>(null)
 
   useEffect(() => {
+
     // Don't fetch if custom period has no valid range
     if (period === 'custom' && (!customFrom || !customTo || customFrom > customTo)) {
       setLoading(false)
@@ -141,7 +142,7 @@ export function useReports(period: ReportPeriod, customFrom: string, customTo: s
     }
 
     load()
-  }, [period, customFrom, customTo])
+  }, [period, customFrom, customTo]) // Re-run when period or custom dates change, or on auth load
 
   return { data, loading, error }
 }

@@ -5,8 +5,8 @@ import toast from 'react-hot-toast'
 
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   async function loadProjects() {
     try {
@@ -23,6 +23,7 @@ export function useProjects() {
 
   useEffect(() => {
     loadProjects()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function addProject(project: Omit<Project, 'id' | 'team' | 'loggedHours'>) {

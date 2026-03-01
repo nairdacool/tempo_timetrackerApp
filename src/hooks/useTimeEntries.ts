@@ -9,10 +9,10 @@ interface UseTimeEntriesOptions {
 }
 
 export function useTimeEntries({ weekDates }: UseTimeEntriesOptions) {
-  const [entries,  setEntries]  = useState<TimeEntry[]>([])
+  const [entries, setEntries] = useState<TimeEntry[]>([])
   const [projects, setProjects] = useState<Project[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   async function load() {
     try {
@@ -31,7 +31,10 @@ export function useTimeEntries({ weekDates }: UseTimeEntriesOptions) {
     }
   }
 
-  useEffect(() => { load() }, [weekDates.join(',')])
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekDates.join(',')])
 
   async function addEntry(entry: {
     projectId: string
@@ -50,32 +53,32 @@ export function useTimeEntries({ weekDates }: UseTimeEntriesOptions) {
   }
 
   async function editEntry(
-  id: string,
-  entry: {
-    projectId: string
-    description: string
-    date: string
-    startTime: string
-    endTime: string
-    durationMinutes: number
+    id: string,
+    entry: {
+      projectId: string
+      description: string
+      date: string
+      startTime: string
+      endTime: string
+      durationMinutes: number
+    }
+  ) {
+    try {
+      await updateTimeEntry(id, entry)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update entry')
+    }
   }
-) {
-  try {
-    await updateTimeEntry(id, entry)
-    await load()
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Failed to update entry')
-  }
-}
 
-async function removeEntry(id: string) {
-  try {
-    await deleteTimeEntry(id)
-    await load()
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Failed to delete entry')
+  async function removeEntry(id: string) {
+    try {
+      await deleteTimeEntry(id)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete entry')
+    }
   }
-}
 
 
   return { entries, projects, loading, error, addEntry, editEntry, removeEntry }

@@ -21,7 +21,9 @@ export function useApprovals() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+  }, [])
 
   async function changeStatus(id: string, status: 'approved' | 'rejected') {
     // Optimistic update — update UI immediately

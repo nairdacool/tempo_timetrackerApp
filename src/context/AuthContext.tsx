@@ -13,14 +13,13 @@ export interface UserProfile {
 }
 
 export interface AuthContextType {
-  user:    User | null
+  user: User | null
   session: Session | null
   profile: UserProfile | null
   loading: boolean
   isAdmin: boolean
   signOut: () => Promise<void>
 }
-
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user,    setUser]    = useState<User | null>(null)
@@ -48,42 +47,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
+    let mounted = true
 
-      if (session?.user) {
-        try {
-          const p = await loadProfile(session.user.id)
-          setProfile(p)
-        } catch (e) {
-          console.error('Profile load failed:', e)
+    // onAuthStateChange fires IMMEDIATELY on mount with the existing session
+    // This is the officially recommended Supabase pattern
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return
+
+        if (!session) {
+          setSession(null)
+          setUser(null)
+          setProfile(null)
+          setLoading(false)
+          return
         }
-      }
-      setLoading(false) // ← always runs now
-    })
 
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
+        setSession(session)
+        setUser(session.user)
 
-      if (session?.user) {
-        try {
+        // Load profile outside of the callback to avoid Supabase deadlock
+        setTimeout(async () => {
+          if (!mounted) return
           const p = await loadProfile(session.user.id)
-          setProfile(p)
-        } catch (e) {
-          console.error('Profile load failed:', e)
-        }
-      } else {
-        setProfile(null)
+          if (mounted) {
+            setProfile(p)
+            setLoading(false)
+          }
+        }, 0)
       }
-      setLoading(false) // ← always runs now
+    )
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
     }
-  )
-
-  return () => subscription.unsubscribe()
-}, [])
+  }, [])
 
   async function signOut() {
     await supabase.auth.signOut()
