@@ -69,7 +69,6 @@ export interface Approval {
 
 export type MemberRole = 'Admin' | 'Developer' | 'Designer' | 'Engineer'
 export type MemberStatus = 'active' | 'offline' | 'pending-invite'
-
 export interface Member {
   id:         string
   name:       string
@@ -77,9 +76,10 @@ export interface Member {
   color:      string
   role:       string
   email:      string
-  status:     'active' | 'pending-invite'
+  status:     MemberStatus
+  isActive:   boolean
   weekHours:  number
   monthHours: number
   projects:   number
-  lastActive: string
+  lastSeen:   string | null
 }
