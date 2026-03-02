@@ -2,6 +2,7 @@ import { useDashboard } from '../hooks/useDashboard'
 import StatCard from '../components/ui/StatCard'
 import TimerWidget from '../components/ui/TimerWidget'
 import { useState } from 'react'
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 interface DashboardProps {
   onNavigate: (path: string) => void
@@ -10,7 +11,7 @@ interface DashboardProps {
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const [refreshKey, setRefreshKey] = useState(0)
   const { data, loading, error } = useDashboard(refreshKey)
-  
+  const { isMobile } = useBreakpoint()
 
   if (loading) return (
     <div style={{
@@ -42,11 +43,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   return (
     <div>
-      {/* Stat Cards */}
+      {/* Stat Cards — 2x2 on mobile, 4 across on desktop */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '16px', marginBottom: '24px',
+        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+        gap: '12px',
+        marginBottom: '20px',
       }}>
         <StatCard
           label="This Week"
@@ -77,10 +79,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       {/* Timer */}
       <TimerWidget onEntrySaved={() => setRefreshKey(k => k + 1)} />
 
-      {/* Main grid */}
+      {/* Main grid — stacks on mobile */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 340px',
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 340px',
         gap: '20px',
       }}>
         {/* Recent entries */}
@@ -101,7 +103,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Your latest logged work</div>
             </div>
             <button
-              onClick={() => onNavigate('timesheet')}
+              onClick={() => onNavigate('/timesheet')}
               style={{
                 marginLeft: 'auto', background: 'transparent',
                 border: 'none', color: 'var(--text-muted)',
@@ -121,13 +123,66 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             }}>
               No entries yet —{' '}
               <span
-                onClick={() => onNavigate('timesheet')}
+                onClick={() => onNavigate('/timesheet')}
                 style={{ color: 'var(--accent)', cursor: 'pointer' }}
               >
                 log your first hour
               </span>
             </div>
+          ) : isMobile ? (
+            // Mobile: card list instead of table
+            <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {d.recentEntries.map(entry => {
+                const statusStyles = {
+                  approved: { bg: 'var(--green-light)', color: 'var(--green)',      label: '✓ Approved' },
+                  pending:  { bg: 'var(--amber-light)', color: 'var(--amber)',      label: '⏳ Pending'  },
+                  draft:    { bg: 'var(--bg-subtle)',   color: 'var(--text-muted)', label: '◌ Draft'    },
+                  rejected: { bg: '#fde8e8',            color: '#c03030',           label: '✗ Rejected' },
+                }
+                const s = statusStyles[entry.status as keyof typeof statusStyles]
+                  ?? { bg: 'var(--bg-subtle)', color: 'var(--text-muted)', label: entry.status }
+                return (
+                  <div key={entry.id} style={{
+                    padding: '12px',
+                    background: 'var(--bg-subtle)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center',
+                        padding: '3px 10px', borderRadius: '20px',
+                        fontSize: '12px', fontWeight: 600,
+                        background: entry.projectColor + '22',
+                        color: entry.projectColor,
+                      }}>
+                        <span style={{
+                          width: '7px', height: '7px', borderRadius: '50%',
+                          background: entry.projectColor, marginRight: '6px',
+                        }} />
+                        {entry.project}
+                      </span>
+                      <span style={{
+                        fontSize: '11.5px', fontWeight: 600,
+                        padding: '3px 9px', borderRadius: '20px',
+                        background: s.bg, color: s.color,
+                      }}>
+                        {s.label}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{entry.description}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{entry.date}</span>
+                      <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px' }}>{entry.duration}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           ) : (
+            // Desktop: table
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-subtle)' }}>
@@ -174,15 +229,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                           {entry.project}
                         </span>
                       </td>
-                      <td style={{ padding: '13px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>
-                        {entry.description}
-                      </td>
-                      <td style={{ padding: '13px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>
-                        {entry.date}
-                      </td>
-                      <td style={{ padding: '13px 16px', fontFamily: 'var(--font-display)', fontSize: '16px' }}>
-                        {entry.duration}
-                      </td>
+                      <td style={{ padding: '13px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>{entry.description}</td>
+                      <td style={{ padding: '13px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>{entry.date}</td>
+                      <td style={{ padding: '13px 16px', fontFamily: 'var(--font-display)', fontSize: '16px' }}>{entry.duration}</td>
                       <td style={{ padding: '13px 16px' }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center',
@@ -225,8 +274,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   <div style={{ flex: 1, height: '8px', background: 'var(--bg-subtle)', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: '4px',
-                      background: barColor,
-                      width: `${pct}%`,
+                      background: barColor, width: `${pct}%`,
                       transition: 'width 0.6s ease',
                     }} />
                   </div>
@@ -247,44 +295,44 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             </div>
           </div>
 
-          {/* Quick actions */}
-          <div style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: '12px', padding: '16px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-          }}>
-            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)', marginBottom: '12px' }}>
-              Quick Actions
+          {/* Quick actions — hide on mobile since bottom nav covers it */}
+          {!isMobile && (
+            <div style={{
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: '12px', padding: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)', marginBottom: '12px' }}>
+                Quick Actions
+              </div>
+              {[
+                { label: '+ Log Time',      page: '/timesheet', color: 'var(--accent)' },
+                { label: '📁 View Projects', page: '/projects',  color: 'var(--blue)'   },
+                { label: '📊 Open Reports',  page: '/reports',   color: 'var(--green)'  },
+                { label: '✓ Approvals',      page: '/approvals', color: 'var(--amber)'  },
+              ].map(action => (
+                <button
+                  key={action.label}
+                  onClick={() => onNavigate(action.page)}
+                  style={{
+                    display: 'block', width: '100%',
+                    padding: '9px 14px', borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    background: 'transparent', color: action.color,
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '13px', fontWeight: 600,
+                    cursor: 'pointer', textAlign: 'left',
+                    marginBottom: '6px', transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-subtle)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'transparent'}
+                >
+                  {action.label}
+                </button>
+              ))}
             </div>
-            {[
-              { label: '+ Log Time',       page: '/timesheet', color: 'var(--accent)'      },
-              { label: '📁 View Projects',  page: '/projects',  color: 'var(--blue)'        },
-              { label: '📊 Open Reports',   page: '/reports',   color: 'var(--green)'       },
-              { label: '✓ Approvals',       page: '/approvals', color: 'var(--amber)'       },
-            ].map(action => (
-              <button
-                key={action.label}
-                onClick={() => onNavigate(action.page)}
-                style={{
-                  display: 'block', width: '100%',
-                  padding: '9px 14px', borderRadius: '8px',
-                  border: '1px solid var(--border)',
-                  background: 'transparent',
-                  color: action.color,
-                  fontFamily: 'var(--font-body)',
-                  fontSize: '13px', fontWeight: 600,
-                  cursor: 'pointer', textAlign: 'left',
-                  marginBottom: '6px',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-subtle)'}
-                onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'transparent'}
-              >
-                {action.label}
-              </button>
-            ))}
-          </div>
+          )}
         </div>
       </div>
     </div>

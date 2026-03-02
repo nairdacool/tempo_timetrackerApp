@@ -92,8 +92,8 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
       {/* Row 2: Date + Start + End + Button */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr 1fr 1fr' : '1fr 1fr 1fr auto',
-        gap: '12px',
+        gridTemplateColumns: '1fr 1fr 1fr', 
+        gap: '8px',
         alignItems: 'end',
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>

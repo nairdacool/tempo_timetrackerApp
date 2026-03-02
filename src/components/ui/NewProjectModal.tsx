@@ -54,7 +54,9 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
         border: '1px solid var(--border)',
         borderRadius: '16px',
         padding: '28px',
-        width: '420px',
+        width: 'min(420px, calc(100vw - 32px))',
+        maxHeight: '90vh',
+        overflowY: 'auto',   
         zIndex: 201,
         boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
       }}>
