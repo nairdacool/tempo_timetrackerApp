@@ -24,6 +24,7 @@ export async function fetchActiveProjects(): Promise<Project[]> {
     .from('projects')
     .select(`*, time_entries (duration_minutes)`)
     .in('status', ['active', 'on-hold'])
+    .is('deleted_at', null)  
     .order('created_at', { ascending: false })
 
   if (!admin) {
@@ -62,6 +63,7 @@ export async function fetchProjects(): Promise<Project[]> {
   let query = supabase
     .from('projects')
     .select(`*, time_entries (duration_minutes)`)
+    .is('deleted_at', null)  
     .order('created_at', { ascending: false })
 
   if (!admin) {
@@ -485,7 +487,11 @@ export async function updateProject(id: string, updates: {
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  const { error } = await supabase.from('projects').delete().eq('id', id)
+  const { error } = await supabase
+    .from('projects')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
+
   if (error) throw new Error(error.message)
 }
 

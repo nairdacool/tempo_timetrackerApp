@@ -50,11 +50,12 @@ export function useProjects() {
 
   async function removeProject(id: string) {
     try {
+      setProjects(prev => prev.filter(p => p.id !== id))
       await deleteProject(id)
-      await loadProjects()
       toast.success('Project deleted')
     } catch {
       toast.error('Failed to delete project')
+      await loadProjects()
     }
   }
 
