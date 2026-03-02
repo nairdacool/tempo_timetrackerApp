@@ -1,4 +1,5 @@
 import type { WeekBar } from '../../types'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 
 interface HoursChartProps {
   bars: WeekBar[]
@@ -7,8 +8,8 @@ interface HoursChartProps {
 
 export default function HoursChart({ bars, periodLabel }: HoursChartProps) {
   const maxHours = Math.max(...bars.map(b => b.hours))
+  const { isMobile } = useBreakpoint()
 
-  // Pick bar color based on hours relative to max
   function barColor(hours: number): string {
     const ratio = hours / maxHours
     if (ratio >= 0.9) return 'var(--green)'
@@ -44,25 +45,17 @@ export default function HoursChart({ bars, periodLabel }: HoursChartProps) {
           {bars.map((bar, i) => {
             const heightPct = (bar.hours / maxHours) * 100
             return (
-              <div
-                key={i}
-                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', height: '100%', justifyContent: 'flex-end' }}
-              >
-                {/* Hours label on top */}
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', height: '100%', justifyContent: 'flex-end' }}>
                 <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>
                   {bar.hours}h
                 </div>
-                {/* Bar */}
                 <div
                   style={{
-                    width: '100%',
-                    height: `${heightPct}%`,
+                    width: '100%', height: `${heightPct}%`,
                     borderRadius: '4px 4px 0 0',
                     background: barColor(bar.hours),
-                    opacity: 0.85,
-                    transition: 'opacity 0.2s, transform 0.2s',
-                    cursor: 'pointer',
-                    minHeight: '4px',
+                    opacity: 0.85, transition: 'opacity 0.2s, transform 0.2s',
+                    cursor: 'pointer', minHeight: '4px',
                   }}
                   onMouseEnter={e => {
                     (e.currentTarget as HTMLDivElement).style.opacity = '1'
@@ -84,8 +77,7 @@ export default function HoursChart({ bars, periodLabel }: HoursChartProps) {
           display: 'flex',
           gap: bars.length > 4 ? '8px' : '16px',
           borderTop: '1px solid var(--border)',
-          paddingTop: '8px',
-          marginTop: '4px',
+          paddingTop: '8px', marginTop: '4px',
         }}>
           {bars.map((bar, i) => (
             <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -95,19 +87,23 @@ export default function HoursChart({ bars, periodLabel }: HoursChartProps) {
         </div>
       </div>
 
-      {/* Summary footer */}
+      {/* Summary footer — 1 column on mobile, 3 on desktop */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
         background: 'var(--bg-subtle)',
         borderTop: '1px solid var(--border)',
       }}>
         {[
-          { label: 'Total Hours',   value: `${bars.reduce((s, b) => s + b.hours, 0)}h` },
-          { label: 'Avg per Week',  value: `${Math.round(bars.reduce((s, b) => s + b.hours, 0) / bars.length)}h` },
-          { label: 'Peak Week',     value: `${maxHours}h` },
-        ].map(item => (
-          <div key={item.label} style={{ padding: '14px 20px', borderRight: '1px solid var(--border)' }}>
+          { label: 'Total Hours',  value: `${bars.reduce((s, b) => s + b.hours, 0)}h` },
+          { label: 'Avg per Week', value: `${Math.round(bars.reduce((s, b) => s + b.hours, 0) / bars.length)}h` },
+          { label: 'Peak Week',    value: `${maxHours}h` },
+        ].map((item, i) => (
+          <div key={item.label} style={{
+            padding: '14px 20px',
+            borderRight: isMobile ? 'none' : '1px solid var(--border)',
+            borderBottom: isMobile && i < 2 ? '1px solid var(--border)' : 'none',
+          }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '4px' }}>
               {item.label}
             </div>

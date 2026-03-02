@@ -1,5 +1,7 @@
 import { useLocation } from 'react-router-dom'
+import { useBreakpoint } from '../../hooks/useBreakpoint'
 import Sidebar from './Sidebar'
+import BottomNav from './BottomNav'
 
 interface LayoutProps {
   children:     React.ReactNode
@@ -21,35 +23,51 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
 export default function Layout({
   children, onNavigate, pendingCount, onSignOut, userEmail,
 }: LayoutProps) {
-  const location = useLocation()
+  const location   = useLocation()
+  const { isMobile } = useBreakpoint()
   const meta = pageMeta[location.pathname] ?? { title: 'Tempo', subtitle: '' }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
-      <Sidebar
-        onNavigate={onNavigate}
-        pendingCount={pendingCount}
-        onSignOut={onSignOut}
-        userEmail={userEmail}
-      />
+
+      {/* Sidebar — desktop only */}
+      {!isMobile && (
+        <Sidebar
+          onNavigate={onNavigate}
+          pendingCount={pendingCount}
+          onSignOut={onSignOut}
+          userEmail={userEmail}
+        />
+      )}
+
       <main style={{
-        marginLeft: '240px', flex: 1,
-        display: 'flex', flexDirection: 'column',
+        marginLeft: isMobile ? 0 : '240px',
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
         minHeight: '100vh',
+        paddingBottom: isMobile ? '64px' : 0,
       }}>
         {/* Topbar */}
         <div style={{
-          height: '64px', padding: '0 32px',
-          display: 'flex', alignItems: 'center',
+          height: isMobile ? 'auto' : '64px',
+          padding: isMobile ? '16px' : '0 32px',
+          display: 'flex',
+          alignItems: isMobile ? 'flex-start' : 'center',
           justifyContent: 'space-between',
           borderBottom: '1px solid var(--border)',
           background: 'var(--bg-card)',
-          position: 'sticky', top: 0, zIndex: 50,
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? '10px' : 0,
         }}>
           <div>
             <div style={{
               fontFamily: 'var(--font-display)',
-              fontSize: '20px', color: 'var(--text)',
+              fontSize: isMobile ? '22px' : '20px',
+              color: 'var(--text)',
               lineHeight: 1,
             }}>
               {meta.title}
@@ -62,24 +80,38 @@ export default function Layout({
           <button
             onClick={() => onNavigate('/timesheet')}
             style={{
-              padding: '9px 20px', borderRadius: '8px',
-              background: 'var(--accent)', color: 'white',
-              border: 'none', fontFamily: 'var(--font-body)',
-              fontSize: '13px', fontWeight: 700,
-              cursor: 'pointer', transition: 'opacity 0.15s',
+              padding: isMobile ? '10px 0' : '9px 20px',
+              width: isMobile ? '100%' : 'auto',
+              borderRadius: '8px',
+              background: 'var(--accent)',
+              color: 'white',
+              border: 'none',
+              fontFamily: 'var(--font-body)',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
             }}
-            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.opacity = '0.85'}
-            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.opacity = '1'}
           >
             + Log Time
           </button>
         </div>
 
         {/* Page content */}
-        <div style={{ flex: 1, padding: '28px 32px' }}>
+        <div style={{
+          flex: 1,
+          padding: isMobile ? '16px' : '28px 32px',
+        }}>
           {children}
         </div>
       </main>
+
+      {/* Bottom nav — mobile only */}
+      {isMobile && (
+        <BottomNav
+          onNavigate={onNavigate}
+          pendingCount={pendingCount}
+        />
+      )}
     </div>
   )
 }

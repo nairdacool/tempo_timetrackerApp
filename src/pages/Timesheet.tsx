@@ -8,6 +8,7 @@ import type { TimeEntry } from "../types";
 import TimeEntryModal from "../components/ui/TimeEntryModal";
 import toast from "react-hot-toast";
 import { downloadCsv } from "../lib/exportCsv";
+import { useBreakpoint } from '../hooks/useBreakpoint'
 
 // Generates a week object starting from a Monday date
 function getWeekDates(monday: Date) {
@@ -65,6 +66,7 @@ export default function Timesheet() {
   const currentMonday = new Date(todayMonday);
   currentMonday.setDate(todayMonday.getDate() + weekOffset * 7);
   const currentWeek = getWeekDates(currentMonday);
+  const { isMobile } = useBreakpoint()
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const {
     entries,

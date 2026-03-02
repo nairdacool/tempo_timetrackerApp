@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { Project, TimeEntry } from "../../types";
 import toast from "react-hot-toast";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 
 interface TimeEntryModalProps {
   mode: "create" | "edit";
@@ -71,6 +72,7 @@ export default function TimeEntryModal({
   const mins = calcMins(startTime, endTime);
   const duration = formatDuration(mins);
   const isValid = description.trim().length > 0 && mins > 0;
+  const { isMobile } = useBreakpoint();
 
   // Close on Escape
   useEffect(() => {
@@ -124,7 +126,7 @@ export default function TimeEntryModal({
         zIndex: 1000,
         background: "rgba(0,0,0,0.6)",
         display: "flex",
-        alignItems: "center",
+        alignItems:  isMobile ? 'flex-end' : 'center', 
         justifyContent: "center",
       }}
     >
@@ -133,11 +135,17 @@ export default function TimeEntryModal({
         style={{
           background: "var(--bg-card)",
           border: "1px solid var(--border)",
-          borderRadius: "16px",
+          borderRadius: isMobile ? "16px 16px 0 0" : "16px",
           padding: "28px",
-          width: "480px",
-          maxWidth: "95vw",
+          width: isMobile ? "100%" : "480px",
+          maxWidth: "100vw",
           boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+          position: isMobile ? "fixed" : "relative",
+          bottom: isMobile ? 0 : "auto",
+          left: isMobile ? 0 : "auto",
+          right: isMobile ? 0 : "auto",
+          maxHeight: isMobile ? "90vh" : "auto",
+          overflowY: "auto",
         }}
       >
         {/* Header */}
