@@ -32,10 +32,22 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
   const [startTime,   setStartTime]   = useState("09:00");
   const [endTime,     setEndTime]     = useState("10:00");
   const { isMobile } = useBreakpoint();
-
   const mins     = calcMins(startTime, endTime);
   const duration = formatDuration(mins);
   const isValid  = description.trim().length > 0 && mins > 0;
+
+  const inputStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-body)',
+  fontSize: isMobile ? '12px' : '13.5px',
+  color: 'var(--text)',
+  background: 'var(--bg-subtle)',
+  border: '1px solid var(--border)',
+  borderRadius: '8px',
+  padding: isMobile ? '8px 6px' : '8px 12px',
+  outline: 'none',
+  width: '100%',
+  boxSizing: 'border-box' as const,
+};
 
   function handleAdd() {
     if (!isValid) return;
@@ -93,7 +105,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr 1fr', 
-        gap: '8px',
+        gap: isMobile ? '6px' : '12px', 
         alignItems: 'end',
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -176,12 +188,4 @@ const labelStyle: React.CSSProperties = {
   fontSize: '11px', fontWeight: 700,
   color: 'var(--text-muted)',
   textTransform: 'uppercase', letterSpacing: '0.4px',
-};
-
-const inputStyle: React.CSSProperties = {
-  fontFamily: 'var(--font-body)', fontSize: '13.5px',
-  color: 'var(--text)', background: 'var(--bg-subtle)',
-  border: '1px solid var(--border)', borderRadius: '8px',
-  padding: '8px 12px', outline: 'none', width: '100%',
-  boxSizing: 'border-box' as const,
 };
