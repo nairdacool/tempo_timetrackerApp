@@ -5,6 +5,7 @@ import ProjectCard from "../components/ui/ProjectCard";
 import NewProjectModal from "../components/ui/NewProjectModal";
 import toast from "react-hot-toast";
 import EditProjectModal from "../components/ui/EditProjectModal";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 export default function Projects() {
   const { projects, loading, error, addProject, editProject, removeProject } =
@@ -16,6 +17,7 @@ export default function Projects() {
   const activeProjects = projects.filter((p) => p.status !== "archived");
   const archivedProjects = projects.filter((p) => p.status === "archived");
   const visibleProjects = showArchived ? projects : activeProjects;
+  const { isMobile, isTablet } = useBreakpoint();
 
   const clients = [
     "All Clients",
@@ -122,6 +124,7 @@ export default function Projects() {
           alignItems: "center",
           gap: "12px",
           marginBottom: "24px",
+          flexWrap: "wrap",
         }}
       >
         <input
@@ -138,7 +141,7 @@ export default function Projects() {
             borderRadius: "8px",
             padding: "8px 14px",
             outline: "none",
-            width: "260px",
+            width: isMobile ? "100%" : "260px",
           }}
         />
         {archivedProjects.length > 0 && (
@@ -261,7 +264,11 @@ export default function Projects() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
+          gridTemplateColumns: isMobile
+            ? "1fr"
+            : isTablet
+              ? "repeat(2, 1fr)"
+              : "repeat(3, 1fr)",
           gap: "16px",
         }}
       >
@@ -279,7 +286,8 @@ export default function Projects() {
           style={{
             border: "2px dashed var(--border)",
             borderRadius: "12px",
-            minHeight: "200px",
+            minHeight: isMobile ? "80px" : "200px", 
+            gridColumn: isMobile ? "1 / -1" : "auto", 
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
