@@ -1,12 +1,6 @@
 import { useState } from 'react'
 import type { Member } from '../../types'
 
-const statusConfig = {
-  'active':         { dot: 'var(--green)',  label: 'Active now'     },
-  'offline':        { dot: 'var(--border)', label: 'Offline'        },
-  'pending-invite': { dot: 'var(--amber)',  label: 'Invite pending' },
-}
-
 const roleColors: Record<string, { bg: string; color: string }> = {
   'Admin':     { bg: 'var(--accent-light)', color: 'var(--accent)' },
   'Developer': { bg: 'var(--blue-light)',   color: 'var(--blue)'   },
@@ -15,13 +9,15 @@ const roleColors: Record<string, { bg: string; color: string }> = {
 }
 
 interface MemberCardProps {
-  member: Member
+  member:   Member
+  isAdmin?: boolean
+  onEdit?:  (member: Member) => void
 }
 
-export default function MemberCard({ member }: MemberCardProps) {
+export default function MemberCard({ member, isAdmin, onEdit }: MemberCardProps) {
   const [hovered, setHovered] = useState(false)
-  const sc = statusConfig[member.status]
   const rc = roleColors[member.role] ?? { bg: 'var(--bg-subtle)', color: 'var(--text-muted)' }
+  const isOnline = member.status === 'active'
 
   return (
     <div
@@ -35,13 +31,46 @@ export default function MemberCard({ member }: MemberCardProps) {
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', textAlign: 'center',
         gap: '10px',
-        cursor: 'pointer',
+        cursor: 'default',
         transition: 'all 0.2s',
         boxShadow: hovered ? '0 12px 32px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
         transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
         position: 'relative',
+        opacity: member.isActive ? 1 : 0.5,
       }}
     >
+      {/* Edit button — admin only */}
+      {isAdmin && onEdit && hovered && (
+        <button
+          onClick={() => onEdit(member)}
+          style={{
+            position: 'absolute', top: '12px', right: '12px',
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border)',
+            borderRadius: '6px', padding: '4px 8px',
+            fontSize: '11px', fontWeight: 600,
+            color: 'var(--text-muted)', cursor: 'pointer',
+          }}
+        >
+          Edit
+        </button>
+      )}
+
+      {/* Deactivated banner */}
+      {!member.isActive && (
+        <div style={{
+          position: 'absolute', top: '10px', left: '10px',
+          background: 'var(--bg-subtle)',
+          border: '1px solid var(--border)',
+          borderRadius: '6px', padding: '2px 8px',
+          fontSize: '10px', fontWeight: 700,
+          color: 'var(--text-muted)', textTransform: 'uppercase',
+          letterSpacing: '0.4px',
+        }}>
+          Deactivated
+        </div>
+      )}
+
       {/* Avatar with status dot */}
       <div style={{ position: 'relative' }}>
         <div style={{
@@ -52,11 +81,10 @@ export default function MemberCard({ member }: MemberCardProps) {
         }}>
           {member.initials}
         </div>
-        {/* Status dot */}
         <div style={{
           position: 'absolute', bottom: '2px', right: '2px',
           width: '12px', height: '12px', borderRadius: '50%',
-          background: sc.dot,
+          background: isOnline ? 'var(--green)' : 'var(--border)',
           border: '2px solid var(--bg-card)',
         }} />
       </div>
@@ -78,8 +106,13 @@ export default function MemberCard({ member }: MemberCardProps) {
 
       {/* Status label */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: sc.dot }} />
-        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 500 }}>{sc.label}</span>
+        <div style={{
+          width: '6px', height: '6px', borderRadius: '50%',
+          background: isOnline ? 'var(--green)' : 'var(--border)',
+        }} />
+        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontWeight: 500 }}>
+          {isOnline ? 'Active now' : `Last seen ${member.lastSeen}`}
+        </span>
       </div>
 
       {/* Divider */}
@@ -88,9 +121,9 @@ export default function MemberCard({ member }: MemberCardProps) {
       {/* Stats */}
       <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', width: '100%' }}>
         {[
-          { val: `${member.weekHours}h`, label: 'This week'  },
+          { val: `${member.weekHours}h`,  label: 'This week'  },
           { val: `${member.monthHours}h`, label: 'This month' },
-          { val: `${member.projectCount}`, label: 'Projects'  },
+          { val: `${member.projects}`,    label: 'Projects'   },
         ].map(stat => (
           <div key={stat.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: 'var(--text)' }}>
@@ -104,12 +137,11 @@ export default function MemberCard({ member }: MemberCardProps) {
       </div>
 
       {/* Email on hover */}
-      {hovered && (
+      {hovered && member.email && (
         <div style={{
           fontSize: '11.5px', color: 'var(--text-muted)',
           borderTop: '1px solid var(--border)',
           paddingTop: '8px', width: '100%',
-          animation: 'fadeIn 0.15s ease',
         }}>
           {member.email}
         </div>

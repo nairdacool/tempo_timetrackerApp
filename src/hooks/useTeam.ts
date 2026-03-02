@@ -7,6 +7,19 @@ export function useTeam() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
+    // Update current user's last_seen on mount
+    useEffect(() => {
+        async function updateLastSeen() {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+            await supabase
+                .from('profiles')
+                .update({ last_seen: new Date().toISOString() })
+                .eq('id', user.id)
+        }
+        updateLastSeen()
+    }, [])
+
     async function load() {
         try {
             setLoading(true)
@@ -19,7 +32,6 @@ export function useTeam() {
 
             if (error) throw new Error(error.message)
 
-            // For each member, fetch their hours
             const members = await Promise.all((data ?? []).map(async profile => {
                 const now = new Date()
                 const monday = getThisMonday(now)
@@ -49,6 +61,24 @@ export function useTeam() {
                 const monthMins = (monthRes.data ?? []).reduce((s, e) => s + e.duration_minutes, 0)
                 const projectCount = (projectRes.data ?? []).length
 
+                // Online = last_seen within 5 minutes
+                const lastSeen = profile.last_seen ? new Date(profile.last_seen) : null
+                const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000)
+                const isOnline = lastSeen ? lastSeen > fiveMinAgo : false
+
+                // Format last seen
+                function formatLastSeen(date: Date | null): string {
+                    if (!date) return 'Never'
+                    const diff = Date.now() - date.getTime()
+                    const mins = Math.floor(diff / 60000)
+                    const hrs = Math.floor(mins / 60)
+                    const days = Math.floor(hrs / 24)
+                    if (mins < 1) return 'Just now'
+                    if (mins < 60) return `${mins}m ago`
+                    if (hrs < 24) return `${hrs}h ago`
+                    return `${days}d ago`
+                }
+
                 return {
                     id: profile.id,
                     name: profile.full_name,
@@ -56,11 +86,12 @@ export function useTeam() {
                     color: profile.color,
                     role: profile.role,
                     email: profile.email ?? '',
-                    status: 'active' as const,
+                    isActive: profile.is_active ?? true,
+                    status: isOnline ? 'active' : 'offline',
                     weekHours: Math.round((weekMins / 60) * 10) / 10,
                     monthHours: Math.round((monthMins / 60) * 10) / 10,
                     projects: projectCount,
-                    lastActive: 'Active now',
+                    lastSeen: formatLastSeen(lastSeen),
                 } as Member
             }))
 
@@ -72,12 +103,23 @@ export function useTeam() {
         }
     }
 
+    async function updateMember(id: string, updates: { role?: string; is_active?: boolean }) {
+        const { error } = await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', id)
+        if (error) throw new Error(error.message)
+        await load()
+    }
+
     useEffect(() => {
         load()
+        const interval = setInterval(load, 180 * 1000) // refresh every 180 seconds
+        return () => clearInterval(interval)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    return { members, loading, error }
+    return { members, loading, error, updateMember, refresh: load }
 }
 
 function getThisMonday(date: Date): Date {
