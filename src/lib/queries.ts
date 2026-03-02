@@ -17,14 +17,14 @@ export async function fetchActiveProjects(): Promise<Project[]> {
     const loggedMinutes = (p.time_entries ?? [])
       .reduce((sum: number, e: { duration_minutes: number }) => sum + e.duration_minutes, 0)
     return {
-      id:          p.id,
-      name:        p.name,
-      client:      p.client,
-      color:       p.color,
+      id: p.id,
+      name: p.name,
+      client: p.client,
+      color: p.color,
       loggedHours: Math.round((loggedMinutes / 60) * 10) / 10,
       budgetHours: p.budget_hours,
-      status:      p.status,
-      team:        [],
+      status: p.status,
+      team: [],
     }
   })
 }
@@ -40,14 +40,14 @@ export async function fetchProjects(): Promise<Project[]> {
     const loggedMinutes = (p.time_entries ?? [])
       .reduce((sum: number, e: { duration_minutes: number }) => sum + e.duration_minutes, 0)
     return {
-      id:          p.id,
-      name:        p.name,
-      client:      p.client,
-      color:       p.color,
+      id: p.id,
+      name: p.name,
+      client: p.client,
+      color: p.color,
       loggedHours: Math.round((loggedMinutes / 60) * 10) / 10,
       budgetHours: p.budget_hours,
-      status:      p.status,
-      team:        [],
+      status: p.status,
+      team: [],
     }
   })
 }
@@ -94,7 +94,7 @@ export async function fetchTimeEntries(weekDates: string[]): Promise<TimeEntry[]
     id: e.id,
     project: e.projects?.name ?? 'Unknown',
     projectColor: e.projects?.color ?? '#c8602a',
-     projectId:    e.project_id,        // ← added projectId for editing
+    projectId: e.project_id,        // ← added projectId for editing
     description: e.description,
     date: e.date,
     startTime: e.start_time.slice(0, 5),
@@ -138,10 +138,10 @@ export async function fetchDashboardStats() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const now       = new Date()
-  const monday    = getThisMonday(now)
+  const now = new Date()
+  const monday = getThisMonday(now)
   const weekStart = monday.toISOString().slice(0, 10)
-  const weekEnd   = new Date(monday.getTime() + 6 * 86400000).toISOString().slice(0, 10)
+  const weekEnd = new Date(monday.getTime() + 6 * 86400000).toISOString().slice(0, 10)
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
   // Fetch this week's entries
@@ -180,15 +180,15 @@ export async function fetchDashboardStats() {
 
   if (appErr) throw new Error(appErr.message)
 
-  const weekMins  = (weekEntries  ?? []).reduce((s, e) => s + e.duration_minutes, 0)
+  const weekMins = (weekEntries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
   const monthMins = (monthEntries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
 
   return {
-    weekHours:    Math.round((weekMins  / 60) * 10) / 10,
-    monthHours:   Math.round((monthMins / 60) * 10) / 10,
+    weekHours: Math.round((weekMins / 60) * 10) / 10,
+    monthHours: Math.round((monthMins / 60) * 10) / 10,
     projectCount: projectCount ?? 0,
     pendingCount: pendingCount ?? 0,
-    weekEntries:  weekEntries  ?? [],
+    weekEntries: weekEntries ?? [],
     weekStart,
   }
 }
@@ -233,9 +233,9 @@ function getThisMonday(date: Date): Date {
 }
 
 function formatEntryDate(dateStr: string): string {
-  const today     = new Date().toISOString().slice(0, 10)
+  const today = new Date().toISOString().slice(0, 10)
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-  if (dateStr === today)     return 'Today'
+  if (dateStr === today) return 'Today'
   if (dateStr === yesterday) return 'Yesterday'
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
@@ -283,25 +283,52 @@ export async function fetchApprovals() {
   // Fetch entry counts for each approval in parallel
   const approvalsWithCounts = await Promise.all(
     data.map(async a => {
-      const { count } = await supabase
+      const { data: entries } = await supabase
         .from('time_entries')
-        .select('*', { count: 'exact', head: true })
+        .select(`*, projects (name, color)`)
         .eq('user_id', a.user_id)
         .gte('date', a.week_start)
         .lte('date', a.week_end)
 
+      const entryList = entries ?? []
+
+      // Group by project and sum hours
+      const projectMap = new Map<string, { name: string; color: string; minutes: number }>()
+      entryList.forEach((e: any) => {
+        const key = e.project_id
+        const existing = projectMap.get(key)
+        if (existing) {
+          existing.minutes += e.duration_minutes
+        } else {
+          projectMap.set(key, {
+            name: e.projects?.name ?? 'Unknown',
+            color: e.projects?.color ?? '#c8602a',
+            minutes: e.duration_minutes,
+          })
+        }
+      })
+
+      const projectSummaries = Array.from(projectMap.values()).map(p => ({
+        name: p.name,
+        color: p.color,
+        hours: Math.round((p.minutes / 60) * 10) / 10,
+      }))
+
       return {
-        id:            a.id,
-        userName:      a.profiles?.full_name  ?? 'Unknown',
-        userInitials:  a.profiles?.initials   ?? '??',
-        userColor:     a.profiles?.color      ?? '#c8602a',
-        userRole:      a.profiles?.role       ?? 'Developer',
-        weekLabel:     formatWeekLabel(a.week_start, a.week_end),
-        totalHours:    a.total_hours,
-        projects:      [],
-        entryCount:    count ?? 0,   // ← real count now
+        id: a.id,
+        userName: a.profiles?.full_name ?? 'Unknown',
+        userInitials: a.profiles?.initials ?? '??',
+        userColor: a.profiles?.color ?? '#c8602a',
+        userRole: a.profiles?.role ?? 'Developer',
+        weekLabel: formatWeekLabel(a.week_start, a.week_end),
+        weekStart: a.week_start,
+        weekEnd: a.week_end,
+        userId: a.user_id,
+        totalHours: a.total_hours,
+        projects: projectSummaries,   // ← now has real data
+        entryCount: entryList.length,
         submittedDate: new Date(a.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        status:        a.status as 'pending' | 'approved' | 'rejected',
+        status: a.status as 'pending' | 'approved' | 'rejected',
       }
     })
   )
@@ -326,7 +353,7 @@ export async function submitWeekForApproval(
 
   if (entriesErr) throw new Error(entriesErr.message)
 
-  const totalMins  = (entries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
+  const totalMins = (entries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
   const totalHours = Math.round((totalMins / 60) * 10) / 10
 
   // Check if approval already exists for this week
@@ -349,11 +376,11 @@ export async function submitWeekForApproval(
     const { error } = await supabase
       .from('approvals')
       .insert({
-        user_id:     user.id,
-        week_start:  weekStart,
-        week_end:    weekEnd,
+        user_id: user.id,
+        week_start: weekStart,
+        week_end: weekEnd,
         total_hours: totalHours,
-        status:      'pending',
+        status: 'pending',
       })
     if (error) throw new Error(error.message)
   }
@@ -402,7 +429,7 @@ export async function updateApprovalStatus(
 
 function formatWeekLabel(start: string, end: string): string {
   const s = new Date(start + 'T00:00:00')
-  const e = new Date(end   + 'T00:00:00')
+  const e = new Date(end + 'T00:00:00')
   const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   return `${fmt(s)} – ${fmt(e)}`
 }
@@ -423,11 +450,11 @@ export async function updateTimeEntry(
   const { error } = await supabase
     .from('time_entries')
     .update({
-      project_id:       entry.projectId,
-      description:      entry.description,
-      date:             entry.date,
-      start_time:       entry.startTime,
-      end_time:         entry.endTime,
+      project_id: entry.projectId,
+      description: entry.description,
+      date: entry.date,
+      start_time: entry.startTime,
+      end_time: entry.endTime,
       duration_minutes: entry.durationMinutes,
     })
     .eq('id', id)
@@ -458,10 +485,10 @@ export async function updateProject(
   const { error } = await supabase
     .from('projects')
     .update({
-      name:         updates.name,
-      color:        updates.color,
+      name: updates.name,
+      color: updates.color,
       budget_hours: updates.budgetHours,
-      status:       updates.status,
+      status: updates.status,
     })
     .eq('id', id)
 
@@ -475,4 +502,22 @@ export async function deleteProject(id: string): Promise<void> {
     .eq('id', id)
 
   if (error) throw new Error(error.message)
+}
+
+// ===== APPROVAL DETAILS =====
+export async function fetchEntriesForApproval(
+  userId: string,
+  weekStart: string,
+  weekEnd: string
+) {
+  const { data, error } = await supabase
+    .from('time_entries')
+    .select(`*, projects (name, color)`)
+    .eq('user_id', userId)
+    .gte('date', weekStart)
+    .lte('date', weekEnd)
+    .order('date', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data ?? []
 }

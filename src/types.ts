@@ -51,17 +51,20 @@ export interface ProjectSummary {
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 
 export interface Approval {
-  id: string
-  userName: string
-  userInitials: string
-  userColor: string
-  userRole: string
-  weekLabel: string
-  totalHours: number
-  projects: string[]
-  entryCount: number
+  id:            string
+  userName:      string
+  userInitials:  string
+  userColor:     string
+  userRole:      string
+  weekLabel:     string
+  weekStart:     string
+  weekEnd:       string
+  userId:        string
+  totalHours:    number
+  projects:      { name: string; color: string; hours: number }[]  // ← change this
+  entryCount:    number
   submittedDate: string
-  status: ApprovalStatus
+  status:        ApprovalStatus
 }
 
 export type MemberRole = 'Admin' | 'Developer' | 'Designer' | 'Engineer'

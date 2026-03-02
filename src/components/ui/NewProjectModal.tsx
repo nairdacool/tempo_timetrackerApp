@@ -20,7 +20,7 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
   function handleSubmit() {
     if (!name) return
     const newProject: Project = {
-      id: Date.now(),
+      id: Date.now().toString(),
       name, client: client || 'Internal',
       color,
       loggedHours: 0,
