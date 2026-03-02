@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useContext } from 'react'
 import type { Project } from '../../types'
+import { fetchProjectMembers, addProjectMember, removeProjectMember } from '../../lib/queries'
+import { supabase } from '../../lib/supabase'
+import { AuthContext } from '../../context/AuthContextInstance'
 
 interface EditProjectModalProps {
   project:  Project
@@ -15,22 +18,66 @@ const colorOptions = [
 ]
 
 const statusOptions = [
-  { value: 'active',   label: 'Active'   },
-  { value: 'on-hold',  label: 'On Hold'  },
+  { value: 'active',    label: 'Active'    },
+  { value: 'on-hold',   label: 'On Hold'   },
   { value: 'completed', label: 'Completed' },
-  { value: 'archived', label: 'Archived' },
+  { value: 'archived',  label: 'Archived'  },
 ]
 
 export default function EditProjectModal({ project, onSave, onDelete, onClose }: EditProjectModalProps) {
-  const [name,         setName]         = useState(project.name)
-  const [color,        setColor]        = useState(project.color)
-  const [budgetHours,  setBudgetHours]  = useState(project.budgetHours)
-  const [status,       setStatus]       = useState<string>(project.status)
-  const [saving,       setSaving]       = useState(false)
+  const { isAdmin } = useContext(AuthContext)
+
+  const [name,          setName]          = useState(project.name)
+  const [color,         setColor]         = useState(project.color)
+  const [budgetHours,   setBudgetHours]   = useState(project.budgetHours)
+  const [status,        setStatus]        = useState<string>(project.status)
+  const [saving,        setSaving]        = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [error,        setError]        = useState<string | null>(null)
+  const [error,         setError]         = useState<string | null>(null)
+
+  // Member assignment state
+  const [members,     setMembers]     = useState<any[]>([])
+  const [allProfiles, setAllProfiles] = useState<any[]>([])
+  const [memberLoading, setMemberLoading] = useState(false)
 
   const isValid = name.trim().length > 0 && budgetHours > 0
+
+  // Load current members and all profiles (admin only)
+  useEffect(() => {
+    if (!isAdmin) return
+    async function loadMembers() {
+      setMemberLoading(true)
+      try {
+        const [currentMembers, profilesRes] = await Promise.all([
+          fetchProjectMembers(project.id),
+          supabase.from('profiles').select('id, full_name, initials, color, role').order('full_name'),
+        ])
+        setMembers(currentMembers)
+        setAllProfiles(profilesRes.data ?? [])
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setMemberLoading(false)
+      }
+    }
+    loadMembers()
+  }, [project.id, isAdmin])
+
+  async function handleToggleMember(profileId: string) {
+    const isMember = members.some(m => m.id === profileId)
+    try {
+      if (isMember) {
+        await removeProjectMember(project.id, profileId)
+        setMembers(prev => prev.filter(m => m.id !== profileId))
+      } else {
+        await addProjectMember(project.id, profileId)
+        const profile = allProfiles.find(p => p.id === profileId)
+        if (profile) setMembers(prev => [...prev, profile])
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update member')
+    }
+  }
 
   async function handleSave() {
     if (!isValid) return
@@ -71,7 +118,8 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
           borderRadius: '16px', padding: '28px',
-          width: '460px', maxWidth: '95vw',
+          width: '480px', maxWidth: '95vw',
+          maxHeight: '90vh', overflowY: 'auto',
           boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
         }}
       >
@@ -116,11 +164,9 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
           <div>
             <label style={labelStyle}>Project Name</label>
             <input
-              type="text"
-              value={name}
+              type="text" value={name}
               onChange={e => setName(e.target.value)}
-              autoFocus
-              style={inputStyle}
+              autoFocus style={inputStyle}
             />
           </div>
 
@@ -130,11 +176,10 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {colorOptions.map(c => (
                 <button
-                  key={c}
-                  onClick={() => setColor(c)}
+                  key={c} onClick={() => setColor(c)}
                   style={{
-                    width: '28px', height: '28px',
-                    borderRadius: '50%', background: c,
+                    width: '28px', height: '28px', borderRadius: '50%',
+                    background: c,
                     border: color === c ? '3px solid white' : '2px solid transparent',
                     outline: color === c ? `2px solid ${c}` : 'none',
                     cursor: 'pointer', transition: 'all 0.15s',
@@ -144,25 +189,19 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
             </div>
           </div>
 
-          {/* Budget hours + Status side by side */}
+          {/* Budget hours + Status */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={labelStyle}>Budget Hours</label>
               <input
-                type="number"
-                min={1}
-                value={budgetHours}
+                type="number" min={1} value={budgetHours}
                 onChange={e => setBudgetHours(Number(e.target.value))}
                 style={inputStyle}
               />
             </div>
             <div>
               <label style={labelStyle}>Status</label>
-              <select
-                value={status}
-                onChange={e => setStatus(e.target.value)}
-                style={inputStyle}
-              >
+              <select value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>
                 {statusOptions.map(s => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
@@ -171,35 +210,103 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
           </div>
 
           {/* Progress preview */}
-          <div style={{
-            background: 'var(--bg-subtle)', borderRadius: '10px',
-            padding: '12px 16px',
-          }}>
+          <div style={{ background: 'var(--bg-subtle)', borderRadius: '10px', padding: '12px 16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Budget preview
-              </span>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>Budget preview</span>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                 {project.loggedHours}h logged / {budgetHours}h budget
               </span>
             </div>
             <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
               <div style={{
-                height: '100%', borderRadius: '3px',
-                background: color,
+                height: '100%', borderRadius: '3px', background: color,
                 width: `${Math.min(100, Math.round((project.loggedHours / budgetHours) * 100))}%`,
                 transition: 'width 0.3s, background 0.2s',
               }} />
             </div>
           </div>
+
+          {/* Team Members — admin only */}
+          {isAdmin && (
+            <div>
+              <label style={labelStyle}>Team Members</label>
+              {memberLoading ? (
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px 0' }}>Loading…</div>
+              ) : (
+                <div style={{
+                  border: '1px solid var(--border)',
+                  borderRadius: '10px', overflow: 'hidden',
+                }}>
+                  {allProfiles.map((profile, i) => {
+                    const isMember = members.some(m => m.id === profile.id)
+                    return (
+                      <div
+                        key={profile.id}
+                        onClick={() => handleToggleMember(profile.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '10px',
+                          padding: '10px 14px',
+                          borderBottom: i < allProfiles.length - 1 ? '1px solid var(--border)' : 'none',
+                          cursor: 'pointer',
+                          background: isMember ? 'var(--accent-light)' : 'transparent',
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => {
+                          if (!isMember) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-subtle)'
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLDivElement).style.background = isMember ? 'var(--accent-light)' : 'transparent'
+                        }}
+                      >
+                        {/* Avatar */}
+                        <div style={{
+                          width: '30px', height: '30px', borderRadius: '50%',
+                          background: profile.color,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '11px', fontWeight: 700, color: 'white', flexShrink: 0,
+                        }}>
+                          {profile.initials}
+                        </div>
+
+                        {/* Name + role */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+                            {profile.full_name}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{profile.role}</div>
+                        </div>
+
+                        {/* Checkmark */}
+                        <div style={{
+                          width: '20px', height: '20px', borderRadius: '50%',
+                          border: isMember ? 'none' : '2px solid var(--border)',
+                          background: isMember ? 'var(--accent)' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, transition: 'all 0.15s',
+                        }}>
+                          {isMember && (
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                {members.length} member{members.length !== 1 ? 's' : ''} assigned
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
           {confirmDelete ? (
             <button
-              onClick={handleDelete}
-              disabled={saving}
+              onClick={handleDelete} disabled={saving}
               style={{
                 padding: '10px 16px', borderRadius: '8px',
                 background: '#c03030', color: 'white', border: 'none',

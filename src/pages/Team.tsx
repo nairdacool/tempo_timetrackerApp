@@ -1,19 +1,43 @@
 import { useState } from 'react'
-import type { Member } from '../types'
-import { mockMembers } from '../data/teamData'
+import { useTeam } from '../hooks/useTeam'
 import MemberCard from '../components/ui/MemberCard'
 import InviteMemberModal from '../components/ui/InviteMemberModal'
 
 type SortKey = 'name' | 'weekHours' | 'monthHours'
 
 export default function Team() {
-  const [members,    setMembers]    = useState<Member[]>(mockMembers)
+  const { members, loading, error } = useTeam()
   const [showModal,  setShowModal]  = useState(false)
   const [search,     setSearch]     = useState('')
   const [roleFilter, setRoleFilter] = useState('All Roles')
   const [sortBy,     setSortBy]     = useState<SortKey>('name')
 
   const roles = ['All Roles', 'Admin', 'Developer', 'Designer', 'Engineer']
+
+  if (loading) return (
+    <div style={{
+      display: 'flex', alignItems: 'center',
+      justifyContent: 'center', padding: '80px',
+      flexDirection: 'column', gap: '16px',
+    }}>
+      <div style={{
+        width: '36px', height: '36px', borderRadius: '50%',
+        border: '3px solid var(--border)',
+        borderTopColor: 'var(--accent)',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Loading team…</div>
+    </div>
+  )
+
+  if (error) return (
+    <div style={{
+      background: '#fde8e8', color: '#c03030',
+      borderRadius: '12px', padding: '20px', fontSize: '13px',
+    }}>
+      ⚠️ {error}
+    </div>
+  )
 
   const filtered = members
     .filter(m => {
@@ -27,10 +51,6 @@ export default function Team() {
       if (sortBy === 'monthHours') return b.monthHours - a.monthHours
       return 0
     })
-
-  function handleInvite(member: Member) {
-    setMembers(prev => [...prev, member])
-  }
 
   const activeCount  = members.filter(m => m.status === 'active').length
   const pendingCount = members.filter(m => m.status === 'pending-invite').length
@@ -72,7 +92,6 @@ export default function Team() {
           {roles.map(r => <option key={r}>{r}</option>)}
         </select>
 
-        {/* Sort */}
         <select
           value={sortBy}
           onChange={e => setSortBy(e.target.value as SortKey)}
@@ -90,7 +109,6 @@ export default function Team() {
           <option value="monthHours">Sort: Month Hours</option>
         </select>
 
-        {/* Summary pill */}
         <div style={{
           fontSize: '12px', color: 'var(--text-muted)',
           background: 'var(--bg-card)',
@@ -169,7 +187,7 @@ export default function Team() {
       {showModal && (
         <InviteMemberModal
           onClose={() => setShowModal(false)}
-          onInvite={handleInvite}
+          onInvite={() => setShowModal(false)}
         />
       )}
     </div>

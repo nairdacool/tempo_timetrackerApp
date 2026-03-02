@@ -71,14 +71,15 @@ export type MemberRole = 'Admin' | 'Developer' | 'Designer' | 'Engineer'
 export type MemberStatus = 'active' | 'offline' | 'pending-invite'
 
 export interface Member {
-  id: number
-  name: string
-  initials: string
-  role: MemberRole
-  color: string
-  status: MemberStatus
-  weekHours: number
+  id:         string
+  name:       string
+  initials:   string
+  color:      string
+  role:       string
+  email:      string
+  status:     'active' | 'pending-invite'
+  weekHours:  number
   monthHours: number
-  projectCount: number
-  email: string
+  projects:   number
+  lastActive: string
 }
