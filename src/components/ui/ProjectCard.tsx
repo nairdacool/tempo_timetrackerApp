@@ -19,9 +19,10 @@ const statusStyles = {
 interface ProjectCardProps {
   project: Project;
   onClick: (project: Project) => void;
+  readOnly?: boolean;
 }
 
-export default function ProjectCard({ project, onClick }: ProjectCardProps) {
+export default function ProjectCard({ project, onClick, readOnly }: ProjectCardProps) {
   const [hovered, setHovered] = useState(false);
   const pct = Math.round((project.loggedHours / project.budgetHours) * 100);
   const isOverBudget = pct >= 90;
@@ -33,15 +34,15 @@ export default function ProjectCard({ project, onClick }: ProjectCardProps) {
 
   return (
     <div
-      onClick={() => onClick(project)}
-      onMouseEnter={() => setHovered(true)}
+      onClick={() => !readOnly && onClick(project)}
+      onMouseEnter={() => !readOnly && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border)",
         borderRadius: "12px",
         overflow: "hidden",
-        cursor: "pointer",
+        cursor: readOnly ? "default" : "pointer",
         transition: "all 0.2s",
         opacity: project.status === "archived" ? 0.5 : 1,
         boxShadow: hovered
