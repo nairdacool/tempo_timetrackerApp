@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
 type AuthMode = 'login' | 'signup'
@@ -11,6 +11,15 @@ export default function Login() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState<string | null>(null)
   const [success,  setSuccess]  = useState<string | null>(null)
+
+  // Check for deactivation error from AuthContext
+  useEffect(() => {
+    const authError = localStorage.getItem('auth_error')
+    if (authError) {
+      setError(authError)
+      localStorage.removeItem('auth_error')
+    }
+  }, [])
 
   function getInitials(fullName: string): string {
     return fullName.trim().split(' ')
@@ -38,26 +47,8 @@ export default function Login() {
       if (error) setError(error.message)
       else setSuccess('Account created! Check your email to confirm, then log in.')
     } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-      if (signInError) {
-        setError(signInError.message)
-      } else {
-        // Check if the user account is active
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('is_active')
-            .eq('id', user.id)
-            .single()
-
-          if (profile && !profile.is_active) {
-            // User is deactivated, sign them out
-            await supabase.auth.signOut()
-            setError('Your account has been deactivated. Please contact your administrator.')
-          }
-        }
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) setError(error.message)
     }
     setLoading(false)
   }

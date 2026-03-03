@@ -36,6 +36,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error || !data) return null;
 
+    // Check if user is deactivated
+    if (!data.is_active) {
+      // Sign them out and store error message
+      await supabase.auth.signOut();
+      localStorage.setItem("auth_error", "Your account has been deactivated. Please contact your administrator.");
+      return null;
+    }
+
     return {
       id:           data.id,
       fullName:     data.full_name,
