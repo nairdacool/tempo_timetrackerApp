@@ -46,13 +46,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } as UserProfile;
   }
 
-  // Auth state listener
+  // Auth state listener — loading resolves as soon as session status is known.
+  // Profile fetch and is_active check happen in the background so a slow/offline
+  // Supabase response can never keep the app stuck on the loading screen.
   useEffect(() => {
     let mounted = true;
+    let resolved = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (event, session) => {
         if (!mounted) return;
+
+        resolved = true;
 
         if (!session) {
           setSession(null);
@@ -62,43 +67,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Check if user is deactivated BEFORE setting them as logged in
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (!mounted) return;
-
-        // If user is deactivated, sign them out immediately
-        if (profileData && !profileData.is_active) {
-          await supabase.auth.signOut();
-          localStorage.setItem('auth_error', 'Your account has been deactivated. Please contact your administrator.');
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-          return;
-        }
-
-        // User is active, proceed with login
+        // Set user/session immediately — loading resolves right away
         setSession(session);
         setUser(session.user);
+        setLoading(false);
 
+        // Background: fetch full profile and enforce is_active
         setTimeout(async () => {
           if (!mounted) return;
-          const p = await loadProfile(session.user.id);
-          if (mounted) {
-            setProfile(p);
-            setLoading(false);
+
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (!mounted) return;
+
+          if (profileData && !profileData.is_active) {
+            await supabase.auth.signOut();
+            localStorage.setItem('auth_error', 'Your account has been deactivated. Please contact your administrator.');
+            return;
           }
+
+          const p = await loadProfile(session.user.id);
+          if (mounted) setProfile(p);
         }, 0);
       }
     );
 
+    // Safety net: if onAuthStateChange never fires within 3s (edge-case),
+    // use getSession() to resolve loading.
+    const timer = setTimeout(async () => {
+      if (!mounted || resolved) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted || resolved) return;
+      if (!session) {
+        setLoading(false);
+      }
+    }, 3000);
+
     return () => {
       mounted = false;
+      clearTimeout(timer);
       subscription.unsubscribe();
     };
   }, []);
