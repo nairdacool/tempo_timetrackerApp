@@ -6,8 +6,10 @@ import NewProjectModal from "../components/ui/NewProjectModal";
 import toast from "react-hot-toast";
 import EditProjectModal from "../components/ui/EditProjectModal";
 import { useBreakpoint } from "../hooks/useBreakpoint";
+import { useAuth } from "../context/useAuth";
 
 export default function Projects() {
+  const { isAdmin } = useAuth();
   const { projects, loading, error, addProject, editProject, removeProject } =
     useProjects();
   const [showModal, setShowModal] = useState(false);
@@ -217,23 +219,25 @@ export default function Projects() {
           )}
         </div>
 
-        <button
-          onClick={() => setShowModal(true)}
-          style={{
-            marginLeft: "auto",
-            padding: "8px 18px",
-            borderRadius: "8px",
-            background: "var(--accent)",
-            color: "white",
-            border: "none",
-            fontFamily: "var(--font-body)",
-            fontSize: "13px",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          + New Project
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setShowModal(true)}
+            style={{
+              marginLeft: "auto",
+              padding: "8px 18px",
+              borderRadius: "8px",
+              background: "var(--accent)",
+              color: "white",
+              border: "none",
+              fontFamily: "var(--font-body)",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            + New Project
+          </button>
+        )}
       </div>
 
       {/* Empty state */}
@@ -273,12 +277,13 @@ export default function Projects() {
           <ProjectCard
             key={project.id}
             project={project}
-            onClick={setEditingProject}
+            onClick={isAdmin ? setEditingProject : () => {}}
+            readOnly={!isAdmin}
           />
         ))}
 
-        {/* Add new card */}
-        <div
+        {/* Add new card — admin only */}
+        {isAdmin && <div
           onClick={() => setShowModal(true)}
           style={{
             border: "2px dashed var(--border)",
@@ -311,7 +316,7 @@ export default function Projects() {
             +
           </div>
           <div style={{ fontSize: "13px", fontWeight: 600 }}>New Project</div>
-        </div>
+        </div>}
       </div>
 
       {/* Modal */}
