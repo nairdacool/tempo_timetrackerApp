@@ -7,18 +7,23 @@ interface EditMemberModalProps {
   onClose:  () => void
 }
 
-const roleOptions = ['Admin', 'Developer', 'Designer', 'Engineer']
+const roleOptions = ['Admin', 'Developer', 'Designer', 'Other']
+const predefinedRoles = new Set(roleOptions)
 
 export default function EditMemberModal({ member, onSave, onClose }: EditMemberModalProps) {
-  const [role,    setRole]    = useState(member.role)
-  const [saving,  setSaving]  = useState(false)
-  const [error,   setError]   = useState<string | null>(null)
+  const isCustom = !predefinedRoles.has(member.role)
+  const [role,       setRole]       = useState(isCustom ? 'Other' : member.role)
+  const [customRole, setCustomRole] = useState(isCustom ? member.role : '')
+  const [saving,     setSaving]     = useState(false)
+  const [error,      setError]      = useState<string | null>(null)
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
+
+  const effectiveRole = role === 'Other' ? (customRole.trim() || 'Other') : role
 
   async function handleSave() {
     try {
       setSaving(true)
-      await onSave(member.id, { role })
+      await onSave(member.id, { role: effectiveRole })
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
@@ -115,6 +120,23 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
               </button>
             ))}
           </div>
+          {role === 'Other' && (
+            <input
+              type="text"
+              placeholder="Enter custom role…"
+              value={customRole}
+              onChange={e => setCustomRole(e.target.value)}
+              style={{
+                marginTop: '10px',
+                width: '100%', fontFamily: 'var(--font-body)',
+                fontSize: '13.5px', color: 'var(--text)',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border)',
+                borderRadius: '8px', padding: '9px 12px',
+                outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+          )}
         </div>
 
         {/* Member status */}

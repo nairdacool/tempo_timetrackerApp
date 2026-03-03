@@ -67,7 +67,7 @@ export interface Approval {
   status:        ApprovalStatus
 }
 
-export type MemberRole = 'Admin' | 'Developer' | 'Designer' | 'Engineer'
+export type MemberRole = 'Admin' | 'Developer' | 'Designer' | 'Other' | string
 export type MemberStatus = 'active' | 'offline' | 'pending-invite'
 export interface Member {
   id:         string

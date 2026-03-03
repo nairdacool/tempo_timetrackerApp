@@ -15,7 +15,7 @@ export default function Team() {
   const [sortBy,         setSortBy]         = useState<SortKey>("name");
   const [hideInactive,   setHideInactive]   = useState(true);
   const { isAdmin }                         = useContext(AuthContext);
-  const { members, loading, error, updateMember } = useTeam();
+  const { members, loading, error, updateMember, refresh } = useTeam();
   const [editingMember,  setEditingMember]  = useState<Member | null>(null);
 
   const roles = ["All Roles", "Admin", "Developer", "Designer", "Engineer"];
@@ -226,7 +226,7 @@ export default function Team() {
       {showModal && (
         <InviteMemberModal
           onClose={() => setShowModal(false)}
-          onInvite={() => setShowModal(false)}
+          onSuccess={() => { setShowModal(false); refresh() }}
         />
       )}
       {editingMember && (
