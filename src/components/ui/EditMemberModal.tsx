@@ -151,7 +151,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
               onClick={handleToggleActive}
               disabled={saving}
               style={{
-                padding: '10px 16px', borderRadius: '8px',
+                padding: '7px 14px', borderRadius: '8px',
                 background: member.isActive ? '#c03030' : 'var(--green)',
                 color: 'white', border: 'none',
                 fontFamily: 'var(--font-body)', fontSize: '13px',
@@ -164,7 +164,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
             <button
               onClick={() => setConfirmDeactivate(true)}
               style={{
-                padding: '10px 16px', borderRadius: '8px',
+                padding: '7px 14px', borderRadius: '8px',
                 background: 'transparent',
                 color: member.isActive ? '#c03030' : 'var(--green)',
                 border: `1px solid ${member.isActive ? '#f5c0c0' : 'var(--green-light)'}`,
@@ -181,7 +181,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
           <button
             onClick={onClose}
             style={{
-              padding: '10px 20px', borderRadius: '8px',
+              padding: '7px 16px', borderRadius: '8px',
               background: 'transparent', color: 'var(--text-muted)',
               border: '1px solid var(--border)',
               fontFamily: 'var(--font-body)', fontSize: '13px',
@@ -194,7 +194,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
             onClick={handleSave}
             disabled={saving}
             style={{
-              padding: '10px 24px', borderRadius: '8px',
+              padding: '7px 20px', borderRadius: '8px',
               background: !saving ? 'var(--accent)' : 'var(--bg-subtle)',
               color: !saving ? 'white' : 'var(--text-muted)',
               border: 'none', fontFamily: 'var(--font-body)',
