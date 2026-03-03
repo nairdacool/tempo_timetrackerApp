@@ -204,7 +204,8 @@ export async function fetchDashboardStats() {
   const { count: projectCount, error: projErr } = await supabase
     .from('projects')
     .select('*', { count: 'exact', head: true })
-    .eq('status', 'active')
+    .in('status', ['active', 'on-hold'])
+    .is('deleted_at', null)
 
   if (projErr) throw new Error(projErr.message)
 

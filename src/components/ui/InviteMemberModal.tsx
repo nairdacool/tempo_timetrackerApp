@@ -26,14 +26,16 @@ export default function InviteMemberModal({ onClose, onInvite }: InviteMemberMod
   function handleInvite() {
     if (!name || !email) return
     const newMember: Member = {
-      id: Date.now(),
+      id: String(Date.now()),
       name, email, role,
       initials: getInitials(name),
       color: avatarColors[Math.floor(Math.random() * avatarColors.length)],
       status: 'pending-invite',
+      isActive: false,
+      lastSeen: null,
       weekHours: 0,
       monthHours: 0,
-      projectCount: 0,
+      projects: 0,
     }
     onInvite(newMember)
     setSent(true)

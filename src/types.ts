@@ -27,7 +27,7 @@ export interface Project {
   color: string
   loggedHours: number
   budgetHours: number
-  status: 'active' | 'on-hold' | 'completed'
+  status: 'active' | 'on-hold' | 'completed' | 'archived'
   team: TeamMember[]
 }
 
@@ -45,7 +45,7 @@ export interface ProjectSummary {
   hours: number
   budgetHours: number
   billable: boolean
-  status: 'active' | 'on-hold' | 'completed'
+  status: 'active' | 'on-hold' | 'completed' | 'archived'
 }
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'

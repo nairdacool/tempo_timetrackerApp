@@ -51,6 +51,7 @@ export function useTeam() {
                         .select('duration_minutes')
                         .eq('user_id', profile.id)
                         .gte('date', monthStart),
+                    // count memberships – we'll override for admins below
                     supabase
                         .from('project_members')
                         .select('project_id')
@@ -59,7 +60,23 @@ export function useTeam() {
 
                 const weekMins = (weekRes.data ?? []).reduce((s, e) => s + e.duration_minutes, 0)
                 const monthMins = (monthRes.data ?? []).reduce((s, e) => s + e.duration_minutes, 0)
-                const projectCount = (projectRes.data ?? []).length
+                let projectCount = (projectRes.data ?? []).length
+
+                // Admins should see the total number of projects in the workspace,
+                // not just the ones they are explicitly a member of. The dashboard
+                // already calculates counts for the current user, so we need to
+                // fetch the overall project count here when the profile is an
+                // admin role. Exclude deleted and archived projects.
+                if (profile.role === 'Admin') {
+                    const { count: adminCount, error: countErr } = await supabase
+                        .from('projects')
+                        .select('id', { count: 'exact', head: true })
+                        .is('deleted_at', null)
+                        .neq('status', 'archived')
+                    if (!countErr) {
+                        projectCount = adminCount ?? 0
+                    }
+                }
 
                 // Online = last_seen within 5 minutes
                 const lastSeen = profile.last_seen ? new Date(profile.last_seen) : null

@@ -66,7 +66,7 @@ export default function Timesheet() {
   const currentMonday = new Date(todayMonday);
   currentMonday.setDate(todayMonday.getDate() + weekOffset * 7);
   const currentWeek = getWeekDates(currentMonday);
-  const { isMobile } = useBreakpoint()
+  const { isMobile: _isMobile } = useBreakpoint()
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const {
     entries,

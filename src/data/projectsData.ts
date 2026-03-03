@@ -2,7 +2,7 @@ import type { Project } from '../types'
 
 export const mockProjects: Project[] = [
   {
-    id: 1,
+    id: '1',
     name: 'Acme Website Redesign',
     client: 'Acme Corporation',
     color: '#c8602a',
@@ -16,7 +16,7 @@ export const mockProjects: Project[] = [
     ],
   },
   {
-    id: 2,
+    id: '2',
     name: 'Backend API v2',
     client: 'Internal',
     color: '#2a5fa8',
@@ -29,7 +29,7 @@ export const mockProjects: Project[] = [
     ],
   },
   {
-    id: 3,
+    id: '3',
     name: 'Mobile App',
     client: 'TechStart Inc.',
     color: '#2a7a4f',
@@ -43,7 +43,7 @@ export const mockProjects: Project[] = [
     ],
   },
   {
-    id: 4,
+    id: '4',
     name: 'Data Pipeline',
     client: 'Internal',
     color: '#c87d2a',
@@ -55,7 +55,7 @@ export const mockProjects: Project[] = [
     ],
   },
   {
-    id: 5,
+    id: '5',
     name: 'Design System',
     client: 'Internal',
     color: '#7a4fa8',

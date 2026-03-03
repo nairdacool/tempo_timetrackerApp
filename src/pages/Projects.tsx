@@ -48,9 +48,6 @@ export default function Projects() {
     }
   }
 
-  function handleCardClick(project: Project) {
-    console.log("Clicked:", project.name);
-  }
 
   // Loading state
   if (loading)
