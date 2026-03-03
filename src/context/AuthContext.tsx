@@ -36,14 +36,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error || !data) return null;
 
-    // Check if user is deactivated
-    if (!data.is_active) {
-      // Sign them out and store error message
-      await supabase.auth.signOut();
-      localStorage.setItem("auth_error", "Your account has been deactivated. Please contact your administrator.");
-      return null;
-    }
-
     return {
       id:           data.id,
       fullName:     data.full_name,
@@ -70,6 +62,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        // Check if user is deactivated BEFORE setting them as logged in
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (!mounted) return;
+
+        // If user is deactivated, sign them out immediately
+        if (profileData && !profileData.is_active) {
+          await supabase.auth.signOut();
+          localStorage.setItem('auth_error', 'Your account has been deactivated. Please contact your administrator.');
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        // User is active, proceed with login
         setSession(session);
         setUser(session.user);
 

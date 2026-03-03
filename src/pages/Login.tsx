@@ -21,6 +21,19 @@ export default function Login() {
     }
   }, [])
 
+  // Check for deactivation error after login attempts
+  useEffect(() => {
+    if (!loading) {
+      setTimeout(() => {
+        const authError = localStorage.getItem('auth_error')
+        if (authError && !error) {
+          setError(authError)
+          localStorage.removeItem('auth_error')
+        }
+      }, 100)
+    }
+  }, [loading, error])
+
   function getInitials(fullName: string): string {
     return fullName.trim().split(' ')
       .map(w => w[0]?.toUpperCase() ?? '')
