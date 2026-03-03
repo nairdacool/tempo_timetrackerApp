@@ -1,20 +1,26 @@
 import { useState } from 'react'
-import type { Member, MemberRole } from '../../types'
+import type { MemberRole } from '../../types'
+import { supabase } from '../../lib/supabase'
 
-const roles: MemberRole[] = ['Admin', 'Developer', 'Designer', 'Engineer']
+const roles: MemberRole[] = ['Admin', 'Developer', 'Designer', 'Other']
 
 const avatarColors = ['#c8602a', '#2a5fa8', '#2a7a4f', '#c87d2a', '#7a4fa8', '#2a8a8a']
 
 interface InviteMemberModalProps {
-  onClose: () => void
-  onInvite: (member: Member) => void
+  onClose:   () => void
+  onSuccess: () => void
 }
 
-export default function InviteMemberModal({ onClose, onInvite }: InviteMemberModalProps) {
-  const [name,  setName]  = useState('')
-  const [email, setEmail] = useState('')
-  const [role,  setRole]  = useState<MemberRole>('Developer')
-  const [sent,  setSent]  = useState(false)
+export default function InviteMemberModal({ onClose, onSuccess }: InviteMemberModalProps) {
+  const [name,       setName]       = useState('')
+  const [email,      setEmail]      = useState('')
+  const [role,       setRole]       = useState<MemberRole>('Developer')
+  const [customRole, setCustomRole] = useState('')
+  const [sending,    setSending]    = useState(false)
+  const [sent,       setSent]       = useState(false)
+  const [error,      setError]      = useState<string | null>(null)
+
+  const effectiveRole = role === 'Other' ? (customRole.trim() || 'Other') : role
 
   function getInitials(fullName: string): string {
     return fullName.trim().split(' ')
@@ -23,23 +29,39 @@ export default function InviteMemberModal({ onClose, onInvite }: InviteMemberMod
       .join('')
   }
 
-  function handleInvite() {
+  async function handleInvite() {
     if (!name || !email) return
-    const newMember: Member = {
-      id: String(Date.now()),
-      name, email, role,
-      initials: getInitials(name),
-      color: avatarColors[Math.floor(Math.random() * avatarColors.length)],
-      status: 'pending-invite',
-      isActive: false,
-      lastSeen: null,
-      weekHours: 0,
-      monthHours: 0,
-      projects: 0,
+    setSending(true)
+    setError(null)
+
+    const color = avatarColors[Math.floor(Math.random() * avatarColors.length)]
+    const initials = getInitials(name)
+
+    const { data: fnData, error: fnError } = await supabase.functions.invoke('invite-member', {
+      body: { email, fullName: name, role: effectiveRole, color, initials },
+    })
+
+    if (fnError || fnData?.error) {
+      // fnError.context is the raw Response — read the JSON body for the real message
+      let msg = fnData?.error ?? 'Failed to send invite'
+      if (fnError) {
+        try {
+          const body = await (fnError as any).context?.json?.()
+          msg = body?.error ?? fnError.message ?? msg
+        } catch {
+          msg = fnError.message ?? msg
+        }
+      }
+      setError(msg)
+      setSending(false)
+      return
     }
-    onInvite(newMember)
+
     setSent(true)
-    setTimeout(onClose, 1500)
+    setTimeout(() => {
+      onSuccess()
+      onClose()
+    }, 1800)
   }
 
   const isValid = name.trim().length > 0 && email.includes('@')
@@ -93,11 +115,20 @@ export default function InviteMemberModal({ onClose, onInvite }: InviteMemberMod
               Invite sent!
             </div>
             <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-              {name} will receive an email at {email}
+              {name} will receive a setup email at {email}
             </div>
           </div>
         ) : (
           <>
+            {error && (
+              <div style={{
+                background: '#fde8e8', color: '#c03030',
+                borderRadius: '8px', padding: '10px 14px',
+                fontSize: '13px', marginBottom: '16px',
+              }}>
+                ⚠️ {error}
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Name */}
               <div>
@@ -127,7 +158,7 @@ export default function InviteMemberModal({ onClose, onInvite }: InviteMemberMod
               {/* Role */}
               <div>
                 <label style={labelStyle}>Role</label>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
                   {roles.map(r => (
                     <button
                       key={r}
@@ -147,6 +178,16 @@ export default function InviteMemberModal({ onClose, onInvite }: InviteMemberMod
                     </button>
                   ))}
                 </div>
+                {role === 'Other' && (
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Enter custom role…"
+                    value={customRole}
+                    onChange={e => setCustomRole(e.target.value)}
+                    style={{ ...inputStyle, marginTop: '10px' }}
+                  />
+                )}
               </div>
 
               {/* Preview */}
@@ -176,7 +217,7 @@ export default function InviteMemberModal({ onClose, onInvite }: InviteMemberMod
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                     }}>
-                    {role} · {email || 'no email yet'}
+                    {effectiveRole} · {email || 'no email yet'}
                 </div>
                 </div>
                   <span style={{
@@ -194,21 +235,21 @@ export default function InviteMemberModal({ onClose, onInvite }: InviteMemberMod
 
             {/* Actions */}
             <div style={{ display: 'flex', gap: '10px', marginTop: '22px', justifyContent: 'flex-end' }}>
-              <button onClick={onClose} style={cancelBtnStyle}>Cancel</button>
+              <button onClick={onClose} disabled={sending} style={cancelBtnStyle}>Cancel</button>
               <button
                 onClick={handleInvite}
-                disabled={!isValid}
+                disabled={!isValid || sending}
                 style={{
                   padding: '9px 20px', borderRadius: '8px',
-                  background: isValid ? 'var(--accent)' : 'var(--bg-subtle)',
-                  color: isValid ? 'white' : 'var(--text-muted)',
+                  background: isValid && !sending ? 'var(--accent)' : 'var(--bg-subtle)',
+                  color: isValid && !sending ? 'white' : 'var(--text-muted)',
                   border: 'none', fontFamily: 'var(--font-body)',
                   fontSize: '13px', fontWeight: 600,
-                  cursor: isValid ? 'pointer' : 'not-allowed',
+                  cursor: isValid && !sending ? 'pointer' : 'not-allowed',
                   transition: 'all 0.15s',
                 }}
               >
-                Send Invite
+                {sending ? 'Sending…' : 'Send Invite'}
               </button>
             </div>
           </>
