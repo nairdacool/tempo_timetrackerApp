@@ -4,6 +4,7 @@ import { useAuth } from './context/useAuth'
 import { AuthProvider } from './context/AuthContext'
 import { supabase } from './lib/supabase'
 import Login from './pages/Login'
+import SetPassword from './pages/SetPassword'
 import Layout from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Timesheet from './pages/Timesheet'
@@ -15,8 +16,19 @@ import Team from './pages/Team'
 function AuthenticatedApp() {
   const { user, loading, signOut, isAdmin } = useAuth()
   const [pendingCount, setPendingCount] = useState(0)
+  const [needsPassword, setNeedsPassword] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Detect invite token in URL hash — show set-password screen
+  useEffect(() => {
+    const hash = window.location.hash
+    if (hash.includes('type=invite')) {
+      setNeedsPassword(true)
+      // Clean the hash from the URL without reloading
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -43,6 +55,13 @@ function AuthenticatedApp() {
   )
 
   if (!user) return <Login />
+
+  if (needsPassword) {
+    return <SetPassword onDone={() => {
+      setNeedsPassword(false)
+      navigate('/dashboard', { replace: true })
+    }} />
+  }
 
   // Redirect non-admins away from admin pages
   const adminOnly = ['/approvals', '/team']
