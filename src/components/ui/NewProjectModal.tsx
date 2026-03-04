@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import type { Project } from '../../types'
+import { useState, useEffect } from 'react'
+import type { Project, Organization } from '../../types'
+import { fetchOrganizations } from '../../lib/queries'
 
 const colorOptions = [
   '#c8602a', '#2a5fa8', '#2a7a4f',
@@ -16,6 +17,12 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
   const [client,  setClient]  = useState('')
   const [budget,  setBudget]  = useState('80')
   const [color,   setColor]   = useState(colorOptions[0])
+  const [orgId,   setOrgId]   = useState('')
+  const [orgs,    setOrgs]    = useState<Organization[]>([])
+
+  useEffect(() => {
+    fetchOrganizations().then(setOrgs).catch(() => {})
+  }, [])
 
   function handleSubmit() {
     if (!name) return
@@ -27,6 +34,7 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
       budgetHours: parseInt(budget) || 80,
       status: 'active',
       team: [{ initials: 'JD', color: '#c8602a' }],
+      organizationId: orgId || undefined,
     }
     onAdd(newProject)
     onClose()
@@ -129,6 +137,21 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
               style={inputStyle}
             />
           </div>
+          {orgs.length > 0 && (
+            <div>
+              <label style={labelStyle}>Organization</label>
+              <select
+                value={orgId}
+                onChange={e => setOrgId(e.target.value)}
+                style={inputStyle}
+              >
+                <option value=''>— None —</option>
+                {orgs.map(o => (
+                  <option key={o.id} value={o.id}>{o.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Preview bar */}

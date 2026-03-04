@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type { TimeEntry } from '../types'
-import type { Project } from '../types'
+import type { Project, Organization } from '../types'
 
 // ===== PRIVATE HELPERS =====
 
@@ -53,6 +53,7 @@ export async function fetchActiveProjects(): Promise<Project[]> {
       budgetHours: p.budget_hours,
       status: p.status,
       team: [],
+      organizationId: p.organization_id ?? undefined,
     }
   })
 }
@@ -92,6 +93,7 @@ export async function fetchProjects(): Promise<Project[]> {
       budgetHours: p.budget_hours,
       status: p.status,
       team: [],
+      organizationId: p.organization_id ?? undefined,
     }
   })
 }
@@ -110,6 +112,7 @@ export async function createProject(
       budget_hours: project.budgetHours,
       status: project.status,
       created_by: user?.id,
+      ...(project.organizationId ? { organization_id: project.organizationId } : {}),
     })
 
   if (error) throw new Error(error.message)
@@ -509,6 +512,129 @@ export async function fetchEntriesForApproval(userId: string, weekStart: string,
 
   if (error) throw new Error(error.message)
   return data ?? []
+}
+
+// ===== ORGANIZATIONS =====
+
+export async function fetchOrganizations(): Promise<Organization[]> {
+  const { data: orgs, error } = await supabase
+    .from('organizations')
+    .select('*')
+    .order('created_at', { ascending: true })
+
+  if (error) throw new Error(error.message)
+
+  return await Promise.all((orgs ?? []).map(async org => {
+    const [{ data: members }, { data: projects }] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, full_name, initials, color, role, email')
+        .eq('organization_id', org.id),
+      supabase
+        .from('projects')
+        .select('id, name, color, status')
+        .eq('organization_id', org.id)
+        .is('deleted_at', null),
+    ])
+
+    return {
+      id:        org.id,
+      name:      org.name,
+      createdAt: org.created_at,
+      members:   (members ?? []).map(m => ({
+        id:       m.id,
+        name:     m.full_name,
+        initials: m.initials,
+        color:    m.color,
+        role:     m.role,
+        email:    m.email,
+      })),
+      projects: (projects ?? []).map(p => ({
+        id:     p.id,
+        name:   p.name,
+        color:  p.color,
+        status: p.status,
+      })),
+    }
+  }))
+}
+
+export async function createOrganization(name: string): Promise<Organization> {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data, error } = await supabase
+    .from('organizations')
+    .insert({ name, created_by: user?.id })
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
+  return { id: data.id, name: data.name, createdAt: data.created_at, members: [], projects: [] }
+}
+
+export async function renameOrganization(id: string, name: string): Promise<void> {
+  const { error } = await supabase.from('organizations').update({ name }).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function deleteOrganization(id: string): Promise<void> {
+  // Detach members and projects before deleting
+  await Promise.all([
+    supabase.from('profiles').update({ organization_id: null }).eq('organization_id', id),
+    supabase.from('projects').update({ organization_id: null }).eq('organization_id', id),
+  ])
+  const { error } = await supabase.from('organizations').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function addMemberToOrg(orgId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ organization_id: orgId })
+    .eq('id', userId)
+  if (error) throw new Error(error.message)
+}
+
+export async function removeMemberFromOrg(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ organization_id: null })
+    .eq('id', userId)
+  if (error) throw new Error(error.message)
+}
+
+export async function addProjectToOrg(orgId: string, projectId: string): Promise<void> {
+  const { error } = await supabase
+    .from('projects')
+    .update({ organization_id: orgId })
+    .eq('id', projectId)
+  if (error) throw new Error(error.message)
+}
+
+export async function removeProjectFromOrg(projectId: string): Promise<void> {
+  const { error } = await supabase
+    .from('projects')
+    .update({ organization_id: null })
+    .eq('id', projectId)
+  if (error) throw new Error(error.message)
+}
+
+export async function fetchUnassignedMembers(orgId: string) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, initials, color, role, email')
+    .or(`organization_id.is.null,organization_id.neq.${orgId}`)
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(m => ({ id: m.id, name: m.full_name, initials: m.initials, color: m.color, role: m.role, email: m.email }))
+}
+
+export async function fetchUnassignedProjects(orgId: string) {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('id, name, color, status')
+    .or(`organization_id.is.null,organization_id.neq.${orgId}`)
+    .is('deleted_at', null)
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(p => ({ id: p.id, name: p.name, color: p.color, status: p.status }))
 }
 
 // ===== HELPERS =====
