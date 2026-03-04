@@ -4,13 +4,14 @@ import { supabase } from '../lib/supabase'
 type AuthMode = 'login' | 'signup'
 
 export default function Login() {
-  const [mode,     setMode]     = useState<AuthMode>('login')
-  const [email,    setEmail]    = useState('')
-  const [password, setPassword] = useState('')
-  const [name,     setName]     = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
-  const [success,  setSuccess]  = useState<string | null>(null)
+  const [mode,         setMode]         = useState<AuthMode>('login')
+  const [email,        setEmail]        = useState('')
+  const [password,     setPassword]     = useState('')
+  const [name,         setName]         = useState('')
+  const [organization, setOrganization] = useState('')
+  const [loading,      setLoading]      = useState(false)
+  const [error,        setError]        = useState<string | null>(null)
+  const [success,      setSuccess]      = useState<string | null>(null)
 
   // Check for deactivation error from AuthContext
   useEffect(() => {
@@ -50,10 +51,11 @@ export default function Login() {
         email, password,
         options: {
           data: {
-            full_name: name,
-            initials: getInitials(name),
-            role: 'Developer',
-            color: '#c8602a',
+            full_name:    name,
+            initials:     getInitials(name),
+            role:         'Admin',
+            color:        '#c8602a',
+            organization: organization.trim() || 'My Organization',
           }
         }
       })
@@ -110,16 +112,28 @@ export default function Login() {
         {/* Fields */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
           {mode === 'signup' && (
-            <div>
-              <label style={labelStyle}>Full Name</label>
-              <input
-                type="text"
-                placeholder="Jane Doe"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
+            <>
+              <div>
+                <label style={labelStyle}>Full Name</label>
+                <input
+                  type="text"
+                  placeholder="Jane Doe"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Organization Name</label>
+                <input
+                  type="text"
+                  placeholder="Acme Inc."
+                  value={organization}
+                  onChange={e => setOrganization(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+            </>
           )}
           <div>
             <label style={labelStyle}>Email</label>
