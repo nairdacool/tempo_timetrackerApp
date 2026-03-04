@@ -38,6 +38,177 @@ function StatusPill({ status }: { status: string }) {
   )
 }
 
+// ─── edit / delete organization modal ───────────────────────────────────
+function OrgEditModal({
+  org, onClose, onSave, onDelete,
+}: {
+  org:      Organization
+  onClose:  () => void
+  onSave:   (id: string, name: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+}) {
+  const [name,          setName]          = useState(org.name)
+  const [saving,        setSaving]        = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [error,         setError]         = useState<string | null>(null)
+
+  async function handleSave() {
+    if (!name.trim()) return
+    setSaving(true)
+    try {
+      await onSave(org.id, name.trim())
+      onClose()
+    } catch (e) {
+      setError((e as Error).message)
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    setSaving(true)
+    try {
+      await onDelete(org.id)
+      onClose()
+    } catch (e) {
+      setError((e as Error).message)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 16, padding: 28, width: 420, maxWidth: '95vw',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10,
+            background: 'var(--accent-light)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 20, flexShrink: 0,
+          }}>🏢</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--text)' }}>
+            Edit Organization
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              marginLeft: 'auto', background: 'transparent',
+              border: 'none', color: 'var(--text-muted)',
+              fontSize: 20, cursor: 'pointer', padding: '4px 8px', borderRadius: 6,
+            }}
+          >×</button>
+        </div>
+
+        {error && (
+          <div style={{
+            background: '#fde8e8', color: '#c03030',
+            borderRadius: 8, padding: '10px 14px',
+            fontSize: 13, marginBottom: 16,
+          }}>⚠️ {error}</div>
+        )}
+
+        {/* Name field */}
+        <div style={{ marginBottom: 24 }}>
+          <label style={{
+            display: 'block', fontSize: 11, fontWeight: 700,
+            color: 'var(--text-muted)', textTransform: 'uppercase',
+            letterSpacing: '0.4px', marginBottom: 6,
+          }}>Organization Name</label>
+          <input
+            autoFocus
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') onClose() }}
+            style={{
+              width: '100%', fontFamily: 'var(--font-body)',
+              fontSize: '13.5px', color: 'var(--text)',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border)',
+              borderRadius: 8, padding: '9px 12px',
+              outline: 'none', boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          {confirmDelete ? (
+            <button
+              onClick={handleDelete}
+              disabled={saving}
+              style={{
+                padding: '10px 16px', borderRadius: 8,
+                background: '#c03030', color: 'white', border: 'none',
+                fontFamily: 'var(--font-body)', fontSize: 13,
+                fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Confirm delete
+            </button>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{
+                padding: '10px 16px', borderRadius: 8,
+                background: 'transparent', color: '#c03030',
+                border: '1px solid #f5c0c0',
+                fontFamily: 'var(--font-body)', fontSize: 13,
+                fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Delete
+            </button>
+          )}
+
+          <div style={{ flex: 1 }} />
+
+          <button
+            onClick={onClose}
+            style={{
+              padding: '10px 20px', borderRadius: 8,
+              background: 'transparent', color: 'var(--text-muted)',
+              border: '1px solid var(--border)',
+              fontFamily: 'var(--font-body)', fontSize: 13,
+              fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!name.trim() || saving}
+            style={{
+              padding: '10px 24px', borderRadius: 8,
+              background: name.trim() && !saving ? 'var(--accent)' : 'var(--bg-subtle)',
+              color: name.trim() && !saving ? 'white' : 'var(--text-muted)',
+              border: 'none', fontFamily: 'var(--font-body)',
+              fontSize: 13, fontWeight: 600,
+              cursor: name.trim() && !saving ? 'pointer' : 'not-allowed',
+            }}
+          >
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── main page ────────────────────────────────────────────────────────────
 export default function Organizations() {
   const [orgs,        setOrgs]        = useState<Organization[]>([])
@@ -46,9 +217,8 @@ export default function Organizations() {
   const [selected,    setSelected]    = useState<Organization | null>(null)
   const [creating,    setCreating]    = useState(false)
   const [newOrgName,  setNewOrgName]  = useState('')
-  const [saving,      setSaving]      = useState(false)
-  const [editingId,   setEditingId]   = useState<string | null>(null)
-  const [editingName, setEditingName] = useState('')
+  const [saving,     setSaving]     = useState(false)
+  const [orgModal,   setOrgModal]   = useState<Organization | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -79,22 +249,15 @@ export default function Organizations() {
     setSaving(false)
   }
 
-  async function handleRename(id: string) {
-    if (!editingName.trim()) return
-    try {
-      await renameOrganization(id, editingName.trim())
-      setEditingId(null)
-      await load()
-    } catch (e) { setError((e as Error).message) }
+  async function handleModalSave(id: string, name: string) {
+    await renameOrganization(id, name)
+    await load()
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this organization? Members and projects will be detached but not deleted.')) return
-    try {
-      await deleteOrganization(id)
-      if (selected?.id === id) setSelected(null)
-      await load()
-    } catch (e) { setError((e as Error).message) }
+  async function handleModalDelete(id: string) {
+    await deleteOrganization(id)
+    if (selected?.id === id) setSelected(null)
+    await load()
   }
 
   return (
@@ -170,11 +333,10 @@ export default function Organizations() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {orgs.map(org => {
               const isSelected = selected?.id === org.id
-              const isEditing = editingId === org.id
               return (
                 <div
                   key={org.id}
-                  onClick={() => !isEditing && setSelected(isSelected ? null : org)}
+                  onClick={() => setSelected(isSelected ? null : org)}
                   style={{
                     background: 'var(--bg-card)',
                     border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
@@ -182,23 +344,7 @@ export default function Organizations() {
                     transition: 'border-color 0.15s',
                   }}
                 >
-                  {isEditing ? (
-                    <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 8 }}>
-                      <input
-                        autoFocus
-                        value={editingName}
-                        onChange={e => setEditingName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleRename(org.id); if (e.key === 'Escape') setEditingId(null) }}
-                        style={{
-                          flex: 1, padding: '6px 10px', borderRadius: 6,
-                          border: '1px solid var(--accent)', background: 'var(--bg)',
-                          color: 'var(--text)', fontSize: 13, outline: 'none',
-                        }}
-                      />
-                      <button onClick={() => handleRename(org.id)} style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Save</button>
-                      <button onClick={e => { e.stopPropagation(); setEditingId(null) }} style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer' }}>✕</button>
-                    </div>
-                  ) : (
+                  {(
                     <>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{
@@ -215,15 +361,10 @@ export default function Organizations() {
                         </div>
                         <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
                           <button
-                            title="Rename"
-                            onClick={() => { setEditingId(org.id); setEditingName(org.name) }}
+                            title="Edit / Delete"
+                            onClick={() => setOrgModal(org)}
                             style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13 }}
                           >✏</button>
-                          <button
-                            title="Delete"
-                            onClick={() => handleDelete(org.id)}
-                            style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontSize: 13 }}
-                          >✕</button>
                         </div>
                       </div>
 
@@ -309,6 +450,16 @@ export default function Organizations() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Edit / Delete Organization modal */}
+      {orgModal && (
+        <OrgEditModal
+          org={orgModal}
+          onClose={() => setOrgModal(null)}
+          onSave={handleModalSave}
+          onDelete={handleModalDelete}
+        />
       )}
     </div>
   )
