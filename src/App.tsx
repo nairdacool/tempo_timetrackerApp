@@ -5,6 +5,10 @@ import { AuthProvider } from './context/AuthContext'
 import { supabase } from './lib/supabase'
 import Login from './pages/Login'
 import SetPassword from './pages/SetPassword'
+// Capture hash BEFORE Supabase JS processes and clears it on load
+const _initialHash = window.location.hash
+const _isInviteLink = _initialHash.includes('type=invite')
+
 import Layout from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Timesheet from './pages/Timesheet'
@@ -16,19 +20,9 @@ import Team from './pages/Team'
 function AuthenticatedApp() {
   const { user, loading, signOut, isAdmin } = useAuth()
   const [pendingCount, setPendingCount] = useState(0)
-  const [needsPassword, setNeedsPassword] = useState(false)
+  const [needsPassword, setNeedsPassword] = useState(_isInviteLink)
   const navigate = useNavigate()
   const location = useLocation()
-
-  // Detect invite token in URL hash — show set-password screen
-  useEffect(() => {
-    const hash = window.location.hash
-    if (hash.includes('type=invite')) {
-      setNeedsPassword(true)
-      // Clean the hash from the URL without reloading
-      window.history.replaceState(null, '', window.location.pathname)
-    }
-  }, [])
 
   useEffect(() => {
     if (!user) return
