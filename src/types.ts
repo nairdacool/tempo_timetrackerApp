@@ -1,4 +1,12 @@
-export type Page = 'dashboard' | 'timesheet' | 'projects' | 'reports' | 'approvals' | 'team'
+export type Page = 'dashboard' | 'timesheet' | 'projects' | 'reports' | 'approvals' | 'team' | 'organizations'
+
+export interface Organization {
+  id:        string
+  name:      string
+  createdAt: string
+  members:   { id: string; name: string; initials: string; color: string; role: string; email: string }[]
+  projects:  { id: string; name: string; color: string; status: string }[]
+}
 
 export type EntryStatus = 'approved' | 'pending' | 'draft'
 
@@ -29,6 +37,7 @@ export interface Project {
   budgetHours: number
   status: 'active' | 'on-hold' | 'completed' | 'archived'
   team: TeamMember[]
+  organizationId?: string
 }
 
 export type ReportPeriod = 'this-month' | 'last-month' | 'q1' | 'custom'
@@ -70,16 +79,17 @@ export interface Approval {
 export type MemberRole = 'Admin' | 'Developer' | 'Designer' | 'Other' | string
 export type MemberStatus = 'active' | 'offline' | 'pending-invite'
 export interface Member {
-  id:         string
-  name:       string
-  initials:   string
-  color:      string
-  role:       string
-  email:      string
-  status:     MemberStatus
-  isActive:   boolean
-  weekHours:  number
-  monthHours: number
-  projects:   number
-  lastSeen:   string | null
+  id:             string
+  name:           string
+  initials:       string
+  color:          string
+  role:           string
+  email:          string
+  status:         MemberStatus
+  isActive:       boolean
+  weekHours:      number
+  monthHours:     number
+  projects:       number
+  lastSeen:       string | null
+  organizationId?: string
 }

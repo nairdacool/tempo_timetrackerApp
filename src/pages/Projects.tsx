@@ -42,6 +42,7 @@ export default function Projects() {
         color: project.color,
         budgetHours: project.budgetHours,
         status: project.status,
+        organizationId: project.organizationId,
       });
       toast.success(`Project "${project.name}" created!`);
       setShowModal(false);

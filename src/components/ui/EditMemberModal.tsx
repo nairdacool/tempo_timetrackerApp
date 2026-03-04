@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import type { Member } from '../../types'
+import { useState, useEffect } from 'react'
+import type { Member, Organization } from '../../types'
+import { fetchOrganizations, addMemberToOrg, removeMemberFromOrg } from '../../lib/queries'
 
 interface EditMemberModalProps {
   member:   Member
@@ -17,6 +18,12 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
   const [saving,     setSaving]     = useState(false)
   const [error,      setError]      = useState<string | null>(null)
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
+  const [orgs,  setOrgs]  = useState<Organization[]>([])
+  const [orgId, setOrgId] = useState<string>(member.organizationId ?? '')
+
+  useEffect(() => {
+    fetchOrganizations().then(setOrgs).catch(() => {})
+  }, [])
 
   const effectiveRole = role === 'Other' ? (customRole.trim() || 'Other') : role
 
@@ -24,6 +31,12 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
     try {
       setSaving(true)
       await onSave(member.id, { role: effectiveRole })
+      // Update org assignment
+      if (orgId) {
+        await addMemberToOrg(orgId, member.id)
+      } else {
+        await removeMemberFromOrg(member.id)
+      }
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
@@ -136,6 +149,36 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
                 outline: 'none', boxSizing: 'border-box',
               }}
             />
+          )}
+        </div>
+
+        {/* Member status */}
+        <div style={{
+          background: 'var(--bg-subtle)', borderRadius: '10px',
+          padding: '14px 16px', marginBottom: '20px',
+        }}>
+          {/* Organization */}
+          {orgs.length > 0 && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={labelStyle}>Organization</label>
+              <select
+                value={orgId}
+                onChange={e => setOrgId(e.target.value)}
+                style={{
+                  width: '100%', fontFamily: 'var(--font-body)',
+                  fontSize: '13.5px', color: 'var(--text)',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px', padding: '9px 12px',
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+              >
+                <option value=''>— None —</option>
+                {orgs.map(o => (
+                  <option key={o.id} value={o.id}>{o.name}</option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
 

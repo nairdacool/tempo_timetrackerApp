@@ -16,6 +16,7 @@ import Projects from './pages/Projects'
 import Reports from './pages/Reports'
 import Approvals from './pages/Approvals'
 import Team from './pages/Team'
+import Organizations from './pages/Organizations'
 
 function AuthenticatedApp() {
   const { user, loading, signOut, isAdmin } = useAuth()
@@ -58,7 +59,7 @@ function AuthenticatedApp() {
   }
 
   // Redirect non-admins away from admin pages
-  const adminOnly = ['/approvals', '/team']
+  const adminOnly = ['/approvals', '/team', '/organizations']
   if (!isAdmin && adminOnly.includes(location.pathname)) {
     return <Navigate to="/dashboard" replace />
   }
@@ -76,9 +77,10 @@ function AuthenticatedApp() {
         <Route path="/timesheet"  element={<Timesheet />} />
         <Route path="/projects"   element={<Projects />} />
         <Route path="/reports"    element={<Reports />} />
-        <Route path="/approvals"  element={<Approvals />} />
-        <Route path="/team"       element={<Team />} />
-        <Route path="*"           element={<Navigate to="/dashboard" replace />} />
+        <Route path="/approvals"      element={<Approvals />} />
+        <Route path="/team"           element={<Team />} />
+        <Route path="/organizations"  element={<Organizations />} />
+        <Route path="*"               element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>
   )

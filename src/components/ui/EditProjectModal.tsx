@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext } from 'react'
-import type { Project } from '../../types'
-import { fetchProjectMembers, addProjectMember, removeProjectMember } from '../../lib/queries'
+import type { Project, Organization } from '../../types'
+import { fetchProjectMembers, addProjectMember, removeProjectMember, fetchOrganizations, addProjectToOrg, removeProjectFromOrg } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
 import { AuthContext } from '../../context/AuthContextInstance'
 
@@ -40,27 +40,33 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
   const [allProfiles, setAllProfiles] = useState<any[]>([])
   const [memberLoading, setMemberLoading] = useState(false)
 
+  // Organization state
+  const [orgs,  setOrgs]  = useState<Organization[]>([])
+  const [orgId, setOrgId] = useState<string>(project.organizationId ?? '')
+
   const isValid = name.trim().length > 0 && budgetHours > 0
 
-  // Load current members and all profiles (admin only)
+  // Load current members + all profiles + organizations (admin only)
   useEffect(() => {
     if (!isAdmin) return
-    async function loadMembers() {
+    async function loadData() {
       setMemberLoading(true)
       try {
-        const [currentMembers, profilesRes] = await Promise.all([
+        const [currentMembers, profilesRes, orgList] = await Promise.all([
           fetchProjectMembers(project.id),
           supabase.from('profiles').select('id, full_name, initials, color, role').order('full_name'),
+          fetchOrganizations(),
         ])
         setMembers(currentMembers)
         setAllProfiles(profilesRes.data ?? [])
+        setOrgs(orgList)
       } catch (e) {
         console.error(e)
       } finally {
         setMemberLoading(false)
       }
     }
-    loadMembers()
+    loadData()
   }, [project.id, isAdmin])
 
   async function handleToggleMember(profileId: string) {
@@ -85,6 +91,12 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
       setSaving(true)
       setError(null)
       await onSave({ name: name.trim(), color, budgetHours, status })
+      // Update organization assignment
+      if (orgId) {
+        await addProjectToOrg(orgId, project.id)
+      } else {
+        await removeProjectFromOrg(project.id)
+      }
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
@@ -208,6 +220,23 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
               </select>
             </div>
           </div>
+
+          {/* Organization — admin only */}
+          {isAdmin && orgs.length > 0 && (
+            <div>
+              <label style={labelStyle}>Organization</label>
+              <select
+                value={orgId}
+                onChange={e => setOrgId(e.target.value)}
+                style={inputStyle}
+              >
+                <option value=''>— None —</option>
+                {orgs.map(o => (
+                  <option key={o.id} value={o.id}>{o.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Progress preview */}
           <div style={{ background: 'var(--bg-subtle)', borderRadius: '10px', padding: '12px 16px' }}>

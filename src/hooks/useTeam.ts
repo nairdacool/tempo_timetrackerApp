@@ -109,6 +109,7 @@ export function useTeam() {
                     monthHours: Math.round((monthMins / 60) * 10) / 10,
                     projects: projectCount,
                     lastSeen: formatLastSeen(lastSeen),
+                    organizationId: profile.organization_id ?? undefined,
                 } as Member
             }))
 
