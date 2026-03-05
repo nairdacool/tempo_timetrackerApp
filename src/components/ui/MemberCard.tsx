@@ -27,7 +27,7 @@ export default function MemberCard({ member, isAdmin, onEdit }: MemberCardProps)
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: '12px',
-        padding: '22px 20px',
+        padding: '18px 16px',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', textAlign: 'center',
         gap: '10px',
@@ -119,7 +119,7 @@ export default function MemberCard({ member, isAdmin, onEdit }: MemberCardProps)
       <div style={{ width: '100%', height: '1px', background: 'var(--border)' }} />
 
       {/* Stats */}
-      <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', width: '100%' }}>
+      <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', width: '100%' }}>
         {[
           { val: `${member.weekHours}h`,  label: 'This week'  },
           { val: `${member.monthHours}h`, label: 'This month' },
@@ -136,13 +136,17 @@ export default function MemberCard({ member, isAdmin, onEdit }: MemberCardProps)
         ))}
       </div>
 
-      {/* Email on hover */}
-      {hovered && member.email && (
+      {/* Email — admin only, always visible */}
+      {isAdmin && member.email && (
         <div style={{
           fontSize: '11.5px', color: 'var(--text-muted)',
           borderTop: '1px solid var(--border)',
           paddingTop: '8px', width: '100%',
+          display: 'flex', alignItems: 'center', gap: 5,
         }}>
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
           {member.email}
         </div>
       )}

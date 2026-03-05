@@ -1,8 +1,12 @@
 import { useDashboard } from '../hooks/useDashboard'
 import StatCard from '../components/ui/StatCard'
 import TimerWidget from '../components/ui/TimerWidget'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useBreakpoint } from '../hooks/useBreakpoint'
+import TimeEntryModal from '../components/ui/TimeEntryModal'
+import { fetchActiveProjects, updateTimeEntry, deleteTimeEntry } from '../lib/queries'
+import type { Project, TimeEntry } from '../types'
+import { useAuth } from '../context/useAuth'
 
 interface DashboardProps {
   onNavigate: (path: string) => void
@@ -12,6 +16,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [refreshKey, setRefreshKey] = useState(0)
   const { data, loading, error } = useDashboard(refreshKey)
   const { isMobile } = useBreakpoint()
+  const { profile } = useAuth()
+  const isAdmin = profile?.role === 'Admin'
+  const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
+  const [dashProjects, setDashProjects] = useState<Project[]>([])
+
+  useEffect(() => {
+    fetchActiveProjects().then(setDashProjects).catch(() => {})
+  }, [])
 
   if (loading) return (
     <div style={{
@@ -53,8 +65,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         <StatCard
           label="This Week"
           value={`${d.weekHours}h`}
-          delta={d.weekHours >= 40 ? '✓ On target' : `${40 - d.weekHours}h remaining`}
-          trend={d.weekHours >= 40 ? 'up' : 'neutral'}
+          delta={
+            d.lastWeekHours === 0 && d.weekHours === 0
+              ? 'No entries yet'
+              : d.weekHours > d.lastWeekHours
+              ? `↑ ${Math.round((d.weekHours - d.lastWeekHours) * 10) / 10}h vs last week`
+              : d.weekHours < d.lastWeekHours
+              ? `↓ ${Math.round((d.lastWeekHours - d.weekHours) * 10) / 10}h vs last week`
+              : '→ Same as last week'
+          }
+          trend={d.weekHours > d.lastWeekHours ? 'up' : d.weekHours < d.lastWeekHours ? 'down' : 'neutral'}
         />
         <StatCard
           label="This Month"
@@ -141,14 +161,30 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 }
                 const s = statusStyles[entry.status as keyof typeof statusStyles]
                   ?? { bg: 'var(--bg-subtle)', color: 'var(--text-muted)', label: entry.status }
+                const handleEntryClick = () => {
+                  if (!isAdmin && entry.status === 'approved') return;
+                  setEditingEntry({
+                    id: entry.id,
+                    project: entry.project,
+                    projectColor: entry.projectColor,
+                    projectId: entry.projectId,
+                    description: entry.description,
+                    date: entry.date,
+                    startTime: entry.startTime,
+                    endTime: entry.endTime,
+                    duration: entry.duration,
+                    status: entry.status,
+                  })
+                }
                 return (
-                  <div key={entry.id} style={{
+                  <div key={entry.id} onClick={handleEntryClick} style={{
                     padding: '12px',
                     background: 'var(--bg-subtle)',
                     borderRadius: '8px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '6px',
+                    cursor: 'pointer',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{
@@ -174,7 +210,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                     </div>
                     <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{entry.description}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{entry.date}</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{entry.dateLabel}</span>
                       <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px' }}>{entry.duration}</span>
                     </div>
                   </div>
@@ -210,9 +246,24 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   return (
                     <tr
                       key={entry.id}
-                      style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background 0.1s' }}
+                      style={{ borderBottom: '1px solid var(--border)', cursor: !isAdmin && entry.status === 'approved' ? 'default' : 'pointer', transition: 'background 0.1s' }}
                       onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'var(--bg-subtle)'}
                       onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
+                      onClick={() => {
+                        if (!isAdmin && entry.status === 'approved') return;
+                        setEditingEntry({
+                        id: entry.id,
+                        project: entry.project,
+                        projectColor: entry.projectColor,
+                        projectId: entry.projectId,
+                        description: entry.description,
+                        date: entry.date,
+                        startTime: entry.startTime,
+                        endTime: entry.endTime,
+                        duration: entry.duration,
+                        status: entry.status,
+                        })
+                      }}
                     >
                       <td style={{ padding: '13px 16px' }}>
                         <span style={{
@@ -230,7 +281,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         </span>
                       </td>
                       <td style={{ padding: '13px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>{entry.description}</td>
-                      <td style={{ padding: '13px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>{entry.date}</td>
+                      <td style={{ padding: '13px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>{entry.dateLabel}</td>
                       <td style={{ padding: '13px 16px', fontFamily: 'var(--font-display)', fontSize: '16px' }}>{entry.duration}</td>
                       <td style={{ padding: '13px 16px' }}>
                         <span style={{
@@ -307,16 +358,17 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 Quick Actions
               </div>
               {[
-                { label: '+ Log Time',      page: '/timesheet', color: 'var(--accent)' },
-                { label: '📁 View Projects', page: '/projects',  color: 'var(--blue)'   },
-                { label: '📊 Open Reports',  page: '/reports',   color: 'var(--green)'  },
-                { label: '✓ Approvals',      page: '/approvals', color: 'var(--amber)'  },
-              ].map(action => (
+                { label: 'Log Time',      page: '/timesheet', color: 'var(--accent)', adminOnly: false, icon: <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> },
+                { label: 'View Projects', page: '/projects',  color: 'var(--blue)',   adminOnly: false, icon: <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg> },
+                { label: 'Open Reports',  page: '/reports',   color: 'var(--green)',  adminOnly: false, icon: <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
+                { label: 'Approvals',     page: '/approvals', color: 'var(--amber)',  adminOnly: true,  icon: <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+              ].filter(a => !a.adminOnly || isAdmin).map(action => (
                 <button
                   key={action.label}
                   onClick={() => onNavigate(action.page)}
                   style={{
-                    display: 'block', width: '100%',
+                    display: 'flex', alignItems: 'center', gap: '9px',
+                    width: '100%',
                     padding: '9px 14px', borderRadius: '8px',
                     border: '1px solid var(--border)',
                     background: 'transparent', color: action.color,
@@ -328,13 +380,33 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-subtle)'}
                   onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'transparent'}
                 >
-                  {action.label}
+                  {action.icon}{action.label}
                 </button>
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {/* Edit entry modal */}
+      {editingEntry && (
+        <TimeEntryModal
+          mode="edit"
+          projects={dashProjects}
+          entry={editingEntry}
+          onSave={async (data) => {
+            await updateTimeEntry(editingEntry.id, data)
+            setEditingEntry(null)
+            setRefreshKey(k => k + 1)
+          }}
+          onDelete={async () => {
+            await deleteTimeEntry(editingEntry.id)
+            setEditingEntry(null)
+            setRefreshKey(k => k + 1)
+          }}
+          onClose={() => setEditingEntry(null)}
+        />
+      )}
     </div>
   )
 }

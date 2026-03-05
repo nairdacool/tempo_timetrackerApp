@@ -4,102 +4,72 @@ import type { Project, Organization } from '../types'
 
 // ===== PRIVATE HELPERS =====
 
-async function isAdmin(): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return false
+// Accepts a pre-resolved userId to avoid a duplicate getUser() round trip
+async function isAdmin(userId: string): Promise<boolean> {
   const { data } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', user.id)
+    .eq('id', userId)
     .single()
   return data?.role === 'Admin'
+}
+
+// Shared implementation for fetchActiveProjects / fetchProjects
+async function fetchProjectsBase(activeOnly: boolean): Promise<Project[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  const admin = await isAdmin(user.id)
+
+  let query = supabase
+    .from('projects')
+    .select(`*, time_entries (duration_minutes)`)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+
+  if (activeOnly) {
+    query = query.in('status', ['active', 'on-hold'])
+  }
+
+  if (admin) {
+    query = query.eq('created_by', user.id)
+  } else {
+    const { data: memberships } = await supabase
+      .from('project_members')
+      .select('project_id')
+      .eq('user_id', user.id)
+    const ids = (memberships ?? []).map(m => m.project_id)
+    if (ids.length === 0) return []
+    query = query.in('id', ids)
+  }
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+
+  return data.map(p => {
+    const loggedMinutes = (p.time_entries ?? [])
+      .reduce((sum: number, e: { duration_minutes: number }) => sum + e.duration_minutes, 0)
+    return {
+      id: p.id,
+      name: p.name,
+      client: p.client,
+      color: p.color,
+      loggedHours: Math.round((loggedMinutes / 60) * 10) / 10,
+      budgetHours: p.budget_hours,
+      status: p.status,
+      team: [],
+      organizationId: p.organization_id ?? undefined,
+    }
+  })
 }
 
 // ===== PROJECTS =====
 
 export async function fetchActiveProjects(): Promise<Project[]> {
-  const { data: { user } } = await supabase.auth.getUser()
-  const admin = await isAdmin()
-
-  let query = supabase
-    .from('projects')
-    .select(`*, time_entries (duration_minutes)`)
-    .in('status', ['active', 'on-hold'])
-    .is('deleted_at', null)  
-    .order('created_at', { ascending: false })
-
-  if (admin) {
-    query = query.eq('created_by', user!.id)
-  } else {
-    const { data: memberships } = await supabase
-      .from('project_members')
-      .select('project_id')
-      .eq('user_id', user!.id)
-    const ids = (memberships ?? []).map(m => m.project_id)
-    if (ids.length === 0) return []
-    query = query.in('id', ids)
-  }
-
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
-
-  return data.map(p => {
-    const loggedMinutes = (p.time_entries ?? [])
-      .reduce((sum: number, e: { duration_minutes: number }) => sum + e.duration_minutes, 0)
-    return {
-      id: p.id,
-      name: p.name,
-      client: p.client,
-      color: p.color,
-      loggedHours: Math.round((loggedMinutes / 60) * 10) / 10,
-      budgetHours: p.budget_hours,
-      status: p.status,
-      team: [],
-      organizationId: p.organization_id ?? undefined,
-    }
-  })
+  return fetchProjectsBase(true)
 }
 
 export async function fetchProjects(): Promise<Project[]> {
-  const { data: { user } } = await supabase.auth.getUser()
-  const admin = await isAdmin()
-
-  let query = supabase
-    .from('projects')
-    .select(`*, time_entries (duration_minutes)`)
-    .is('deleted_at', null)  
-    .order('created_at', { ascending: false })
-
-  if (admin) {
-    query = query.eq('created_by', user!.id)
-  } else {
-    const { data: memberships } = await supabase
-      .from('project_members')
-      .select('project_id')
-      .eq('user_id', user!.id)
-    const ids = (memberships ?? []).map(m => m.project_id)
-    if (ids.length === 0) return []
-    query = query.in('id', ids)
-  }
-
-  const { data, error } = await query
-  if (error) throw new Error(error.message)
-
-  return data.map(p => {
-    const loggedMinutes = (p.time_entries ?? [])
-      .reduce((sum: number, e: { duration_minutes: number }) => sum + e.duration_minutes, 0)
-    return {
-      id: p.id,
-      name: p.name,
-      client: p.client,
-      color: p.color,
-      loggedHours: Math.round((loggedMinutes / 60) * 10) / 10,
-      budgetHours: p.budget_hours,
-      status: p.status,
-      team: [],
-      organizationId: p.organization_id ?? undefined,
-    }
-  })
+  return fetchProjectsBase(false)
 }
 
 export async function createProject(
@@ -135,7 +105,7 @@ export async function fetchTimeEntries(weekDates: string[], targetUserId?: strin
     .select(`*, projects (name, color)`)
     .eq('user_id', userId)
     .in('date', weekDates)
-    .order('date', { ascending: false })
+    .order('date', { ascending: true })
     .order('start_time', { ascending: true })
 
   if (error) throw new Error(error.message)
@@ -191,46 +161,82 @@ export async function fetchDashboardStats() {
   const monday = getThisMonday(now)
   const weekStart = monday.toISOString().slice(0, 10)
   const weekEnd = new Date(monday.getTime() + 6 * 86400000).toISOString().slice(0, 10)
+  const lastMonday = new Date(monday.getTime() - 7 * 86400000)
+  const lastWeekStart = lastMonday.toISOString().slice(0, 10)
+  const lastWeekEnd = new Date(lastMonday.getTime() + 6 * 86400000).toISOString().slice(0, 10)
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
-  const { data: weekEntries, error: weekErr } = await supabase
-    .from('time_entries')
-    .select('duration_minutes, date, project_id')
-    .eq('user_id', user.id)
-    .gte('date', weekStart)
-    .lte('date', weekEnd)
+  // Batch 1: all time-entry aggregates + role check in parallel
+  const [
+    { data: weekEntries, error: weekErr },
+    { data: lastWeekEntries },
+    { data: monthEntries, error: monthErr },
+    { data: profileData },
+  ] = await Promise.all([
+    supabase
+      .from('time_entries')
+      .select('duration_minutes, date, project_id')
+      .eq('user_id', user.id)
+      .gte('date', weekStart)
+      .lte('date', weekEnd),
+    supabase
+      .from('time_entries')
+      .select('duration_minutes')
+      .eq('user_id', user.id)
+      .gte('date', lastWeekStart)
+      .lte('date', lastWeekEnd),
+    supabase
+      .from('time_entries')
+      .select('duration_minutes')
+      .eq('user_id', user.id)
+      .gte('date', monthStart),
+    supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single(),
+  ])
 
   if (weekErr) throw new Error(weekErr.message)
-
-  const { data: monthEntries, error: monthErr } = await supabase
-    .from('time_entries')
-    .select('duration_minutes')
-    .eq('user_id', user.id)
-    .gte('date', monthStart)
-
   if (monthErr) throw new Error(monthErr.message)
 
-  const { count: projectCount, error: projErr } = await supabase
-    .from('projects')
-    .select('*', { count: 'exact', head: true })
-    .in('status', ['active', 'on-hold'])
-    .is('deleted_at', null)
+  const admin = profileData?.role === 'Admin'
 
-  if (projErr) throw new Error(projErr.message)
+  // Batch 2: project count + pending approvals in parallel
+  const [projectCountResult, pendingCountResult] = await Promise.all([
+    admin
+      ? supabase
+          .from('projects')
+          .select('*', { count: 'exact', head: true })
+          .eq('created_by', user.id)
+          .in('status', ['active', 'on-hold'])
+          .is('deleted_at', null)
+      : supabase
+          .from('project_members')
+          .select('project_id, projects!inner(status, deleted_at)', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .in('projects.status', ['active', 'on-hold'])
+          .is('projects.deleted_at', null),
+    supabase
+      .from('approvals')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('status', 'pending'),
+  ])
 
-  const { count: pendingCount, error: appErr } = await supabase
-    .from('approvals')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('status', 'pending')
+  if (projectCountResult.error) throw new Error(projectCountResult.error.message)
+  if (pendingCountResult.error) throw new Error(pendingCountResult.error.message)
 
-  if (appErr) throw new Error(appErr.message)
+  const projectCount = projectCountResult.count ?? 0
+  const pendingCount = pendingCountResult.count ?? 0
 
   const weekMins = (weekEntries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
   const monthMins = (monthEntries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
+  const lastWeekMins = (lastWeekEntries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
 
   return {
     weekHours: Math.round((weekMins / 60) * 10) / 10,
+    lastWeekHours: Math.round((lastWeekMins / 60) * 10) / 10,
     monthHours: Math.round((monthMins / 60) * 10) / 10,
     projectCount: projectCount ?? 0,
     pendingCount: pendingCount ?? 0,
@@ -257,8 +263,12 @@ export async function fetchRecentEntries() {
     id: e.id,
     project: e.projects?.name ?? 'Unknown',
     projectColor: e.projects?.color ?? '#c8602a',
+    projectId: e.project_id,
     description: e.description,
-    date: formatEntryDate(e.date),
+    date: e.date,
+    dateLabel: formatEntryDate(e.date),
+    startTime: e.start_time ?? '00:00',
+    endTime: e.end_time ?? '00:00',
     duration: minsToDisplay(e.duration_minutes),
     status: e.status as 'approved' | 'pending' | 'draft',
   }))
@@ -279,6 +289,29 @@ export async function fetchReportData(startDate: string, endDate: string, includ
 
   if (!includeAllUsers) {
     query = query.eq('user_id', user.id)
+  } else {
+    // Scope to users in the admin's own organisation only
+    const { data: adminProfile } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single()
+    const orgId = adminProfile?.organization_id
+    if (orgId) {
+      const { data: orgMembers } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('organization_id', orgId)
+      const orgUserIds = (orgMembers ?? []).map(m => m.id)
+      if (orgUserIds.length > 0) {
+        query = query.in('user_id', orgUserIds)
+      } else {
+        return [] // org has no members yet
+      }
+    } else {
+      // Admin not in an org — fall back to own entries only
+      query = query.eq('user_id', user.id)
+    }
   }
 
   const { data, error } = await query
@@ -310,59 +343,69 @@ export async function fetchApprovals() {
     .order('submitted_at', { ascending: false })
 
   if (error) throw new Error(error.message)
+  if (!data || data.length === 0) return []
 
-  const approvalsWithCounts = await Promise.all(
-    data.map(async a => {
-      const { data: entries } = await supabase
-        .from('time_entries')
-        .select(`*, projects (name, color)`)
-        .eq('user_id', a.user_id)
-        .gte('date', a.week_start)
-        .lte('date', a.week_end)
+  // Batch: fetch all relevant entries in ONE query instead of N queries.
+  // Scope to the union of all user_ids and the full date range across all approvals.
+  const userIds   = [...new Set(data.map(a => a.user_id))]
+  const minDate   = data.reduce((min, a) => a.week_start < min ? a.week_start : min, data[0].week_start)
+  const maxDate   = data.reduce((max, a) => a.week_end   > max ? a.week_end   : max, data[0].week_end)
 
-      const entryList = entries ?? []
+  const { data: allEntries } = await supabase
+    .from('time_entries')
+    .select(`project_id, user_id, date, duration_minutes, status, projects (name, color)`)
+    .in('user_id', userIds)
+    .gte('date', minDate)
+    .lte('date', maxDate)
 
-      const projectMap = new Map<string, { name: string; color: string; minutes: number }>()
-      entryList.forEach((e: any) => {
-        const key = e.project_id
-        const existing = projectMap.get(key)
-        if (existing) {
-          existing.minutes += e.duration_minutes
-        } else {
-          projectMap.set(key, {
-            name: e.projects?.name ?? 'Unknown',
-            color: e.projects?.color ?? '#c8602a',
-            minutes: e.duration_minutes,
-          })
-        }
-      })
+  const entries = allEntries ?? []
 
-      const projectSummaries = Array.from(projectMap.values()).map(p => ({
-        name: p.name,
-        color: p.color,
-        hours: Math.round((p.minutes / 60) * 10) / 10,
-      }))
+  return data.map(a => {
+    // Match entries that belong to this approval (same user, date range, status)
+    const entryList = entries.filter((e: any) =>
+      e.user_id === a.user_id &&
+      e.date >= a.week_start &&
+      e.date <= a.week_end &&
+      e.status === a.status
+    )
 
-      return {
-        id: a.id,
-        userName: a.profiles?.full_name ?? 'Unknown',
-        userInitials: a.profiles?.initials ?? '??',
-        userColor: a.profiles?.color ?? '#c8602a',
-        userRole: a.profiles?.role ?? 'Developer',
-        weekLabel: formatWeekLabel(a.week_start, a.week_end),
-        weekStart: a.week_start,
-        weekEnd: a.week_end,
-        userId: a.user_id,
-        totalHours: a.total_hours,
-        projects: projectSummaries,
-        entryCount: entryList.length,
-        submittedDate: new Date(a.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        status: a.status as 'pending' | 'approved' | 'rejected',
+    const projectMap = new Map<string, { name: string; color: string; minutes: number }>()
+    entryList.forEach((e: any) => {
+      const existing = projectMap.get(e.project_id)
+      if (existing) {
+        existing.minutes += e.duration_minutes
+      } else {
+        projectMap.set(e.project_id, {
+          name: e.projects?.name ?? 'Unknown',
+          color: e.projects?.color ?? '#c8602a',
+          minutes: e.duration_minutes,
+        })
       }
     })
-  )
 
-  return approvalsWithCounts
+    const projectSummaries = Array.from(projectMap.values()).map(p => ({
+      name: p.name,
+      color: p.color,
+      hours: Math.round((p.minutes / 60) * 10) / 10,
+    }))
+
+    return {
+      id: a.id,
+      userName: a.profiles?.full_name ?? 'Unknown',
+      userInitials: a.profiles?.initials ?? '??',
+      userColor: a.profiles?.color ?? '#c8602a',
+      userRole: a.profiles?.role ?? 'Developer',
+      weekLabel: formatWeekLabel(a.week_start, a.week_end),
+      weekStart: a.week_start,
+      weekEnd: a.week_end,
+      userId: a.user_id,
+      totalHours: a.total_hours,
+      projects: projectSummaries,
+      entryCount: entryList.length,
+      submittedDate: new Date(a.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      status: a.status as 'pending' | 'approved' | 'rejected',
+    }
+  })
 }
 
 export async function submitWeekForApproval(weekStart: string, weekEnd: string): Promise<void> {
@@ -373,6 +416,7 @@ export async function submitWeekForApproval(weekStart: string, weekEnd: string):
     .from('time_entries')
     .select('duration_minutes')
     .eq('user_id', user.id)
+    .in('status', ['draft', 'rejected'])
     .gte('date', weekStart)
     .lte('date', weekEnd)
 
@@ -383,12 +427,16 @@ export async function submitWeekForApproval(weekStart: string, weekEnd: string):
 
   const { data: existing } = await supabase
     .from('approvals')
-    .select('id')
+    .select('id, status')
     .eq('user_id', user.id)
     .eq('week_start', weekStart)
     .single()
 
   if (existing) {
+    // Do not allow re-submission of an already-approved week
+    if (existing.status === 'approved') {
+      throw new Error('This week has already been approved and cannot be resubmitted.')
+    }
     const { error } = await supabase
       .from('approvals')
       .update({ status: 'pending', total_hours: totalHours, submitted_at: new Date().toISOString() })
@@ -405,7 +453,7 @@ export async function submitWeekForApproval(weekStart: string, weekEnd: string):
     .from('time_entries')
     .update({ status: 'pending' })
     .eq('user_id', user.id)
-    .eq('status', 'draft')
+    .in('status', ['draft', 'rejected'])
     .gte('date', weekStart)
     .lte('date', weekEnd)
 }
@@ -432,6 +480,7 @@ export async function updateApprovalStatus(id: string, status: 'approved' | 'rej
     .eq('user_id', approval.user_id)
     .gte('date', approval.week_start)
     .lte('date', approval.week_end)
+    .eq('status', 'pending')
 
   if (entriesErr) throw new Error(entriesErr.message)
 }
@@ -524,21 +573,6 @@ export async function deleteProject(id: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
-// ===== APPROVAL DETAILS =====
-
-export async function fetchEntriesForApproval(userId: string, weekStart: string, weekEnd: string) {
-  const { data, error } = await supabase
-    .from('time_entries')
-    .select(`*, projects (name, color)`)
-    .eq('user_id', userId)
-    .gte('date', weekStart)
-    .lte('date', weekEnd)
-    .order('date', { ascending: true })
-
-  if (error) throw new Error(error.message)
-  return data ?? []
-}
-
 // ===== ORGANIZATIONS =====
 
 export async function fetchOrganizations(): Promise<Organization[]> {
@@ -556,7 +590,8 @@ export async function fetchOrganizations(): Promise<Organization[]> {
       supabase
         .from('profiles')
         .select('id, full_name, initials, color, role')
-        .eq('organization_id', org.id),
+        .eq('organization_id', org.id)
+        .eq('is_active', true),
       supabase
         .from('projects')
         .select('id, name, color, status')
@@ -648,15 +683,18 @@ export async function fetchUnassignedMembers(orgId: string) {
   const { data, error } = await supabase
     .from('profiles')
     .select('id, full_name, initials, color, role, email')
+    .eq('is_active', true)
     .or(`organization_id.is.null,organization_id.neq.${orgId}`)
   if (error) throw new Error(error.message)
   return (data ?? []).map(m => ({ id: m.id, name: m.full_name, initials: m.initials, color: m.color, role: m.role, email: m.email }))
 }
 
 export async function fetchUnassignedProjects(orgId: string) {
+  const { data: { user } } = await supabase.auth.getUser()
   const { data, error } = await supabase
     .from('projects')
     .select('id, name, color, status')
+    .eq('created_by', user!.id)
     .or(`organization_id.is.null,organization_id.neq.${orgId}`)
     .is('deleted_at', null)
   if (error) throw new Error(error.message)

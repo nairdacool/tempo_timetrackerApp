@@ -27,11 +27,24 @@ function AuthenticatedApp() {
 
   useEffect(() => {
     if (!user) return
-    supabase
-      .from('approvals')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending')
-      .then(({ count }) => setPendingCount(count ?? 0))
+
+    function fetchPending() {
+      supabase
+        .from('approvals')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+        .then(({ count }) => setPendingCount(count ?? 0))
+    }
+
+    fetchPending()
+
+    // Re-fetch whenever any approval row changes
+    const channel = supabase
+      .channel('approvals-badge')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'approvals' }, fetchPending)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [user])
 
   if (loading) return (
