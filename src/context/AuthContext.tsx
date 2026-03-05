@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadProfile(userId: string, fallbackOrg?: string) {
+  async function loadProfile(userId: string, metaOrg?: string) {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
@@ -36,16 +36,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error || !data) return null;
 
-    // The DB trigger hardcodes 'dummy organization' — replace it with the
-    // real value from signup metadata and persist it so it only happens once.
-    const isDummy = !data.organization || data.organization === 'dummy organization'
-    const realOrg = isDummy ? (fallbackOrg || 'Tempo') : data.organization
+    // user_metadata.organization is the authoritative source — it's what the
+    // user typed at signup. The DB trigger ignores it and hardcodes a dummy
+    // value, so we always sync it back on load.
+    const orgToUse = metaOrg || data.organization || 'Tempo'
 
-    if (isDummy && fallbackOrg) {
+    if (metaOrg && data.organization !== metaOrg) {
+      // Persist the correct org name to the profiles row
       await supabase
         .from('profiles')
-        .update({ organization: fallbackOrg })
+        .update({ organization: metaOrg })
         .eq('id', userId)
+    }
+
+    // Auto-create the Organization record for this admin if they don't have one yet
+    if (data.role === 'Admin' && metaOrg) {
+      const { count } = await supabase
+        .from('organizations')
+        .select('id', { count: 'exact', head: true })
+        .eq('created_by', userId)
+      if ((count ?? 0) === 0) {
+        await supabase
+          .from('organizations')
+          .insert({ name: metaOrg, created_by: userId })
+      }
     }
 
     return {
@@ -54,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       initials:     data.initials,
       role:         data.role,
       color:        data.color,
-      organization: realOrg,
+      organization: orgToUse,
     } as UserProfile;
   }
 
