@@ -5,8 +5,10 @@ import PeriodFilter from "../components/ui/PeriodFilter";
 import HoursChart from "../components/ui/HoursChart";
 import ProjectBreakdownTable from "../components/ui/ProjectBreakdownTable";
 import { downloadCsv } from "../lib/exportCsv";
+import { downloadPdf } from "../lib/exportPdf";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/useAuth";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 export default function Reports() {
   const [period, setPeriod] = useState<ReportPeriod>("this-month");
@@ -20,6 +22,7 @@ export default function Reports() {
 
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'Admin';
+  const { isMobile } = useBreakpoint();
 
   const { data, loading, error } = useReports(period, appliedFrom, appliedTo, isAdmin);
 
@@ -60,6 +63,24 @@ export default function Reports() {
       rows,
     );
     toast.success("Report exported!");
+  }
+
+  function handleExportPdf() {
+    if (!data || data.summaries.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+    downloadPdf({
+      periodLabel:     data.periodLabel,
+      totalHours,
+      billableHours,
+      billablePct,
+      bars:            data.bars,
+      summaries:       data.summaries,
+      memberSummaries: data.memberSummaries,
+      detailEntries:   data.detailEntries,
+    });
+    toast.success("PDF exported!");
   }
 
   function handleExportDetail() {
@@ -183,7 +204,7 @@ export default function Reports() {
         )}
 
         <div style={{ flex: 1 }} />
-        <button style={exportBtnStyle}>Export PDF</button>
+        <button onClick={handleExportPdf} style={exportBtnStyle}>Export PDF</button>
         <button onClick={handleExportDetail} style={exportBtnStyle}>Export Detail</button>
         <button onClick={handleExportCsv} style={exportBtnStyle}>Export CSV</button>
       </div>
@@ -266,7 +287,7 @@ export default function Reports() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
+              gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
               gap: "16px",
               marginBottom: "24px",
             }}
@@ -397,9 +418,10 @@ export default function Reports() {
                       </tr>
                     </thead>
                     <tbody>
-                      {data.memberSummaries.map((m, i) => {
-                        const totalHrs = data.memberSummaries.reduce((s, x) => s + x.hours, 0);
-                        const share = totalHrs > 0 ? Math.round((m.hours / totalHrs) * 100) : 0;
+                      {(() => {
+                        const totalMemberHrs = data.memberSummaries.reduce((s, x) => s + x.hours, 0);
+                        return data.memberSummaries.map((m, i) => {
+                        const share = totalMemberHrs > 0 ? Math.round((m.hours / totalMemberHrs) * 100) : 0;
                         return (
                           <tr key={m.memberId} style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
                             <td style={{ padding: '12px 16px' }}>
@@ -424,7 +446,8 @@ export default function Reports() {
                             </td>
                           </tr>
                         );
-                      })}
+                      })
+                    })()}
                     </tbody>
                   </table>
                 </div>

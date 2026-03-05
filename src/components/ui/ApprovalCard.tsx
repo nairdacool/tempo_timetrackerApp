@@ -4,6 +4,7 @@ import type { Approval, ApprovalStatus } from "../../types";
 interface ApprovalCardProps {
   approval: Approval;
   onStatusChange: (id: string, status: ApprovalStatus) => void;
+  onView: (approval: Approval) => void;
 }
 
 const statusStyles: Record<
@@ -15,7 +16,7 @@ const statusStyles: Record<
   rejected: { border: "#e05050",      badge: "#fde8e8",            badgeText: "#c03030",        label: "✗ Rejected" },
 };
 
-export default function ApprovalCard({ approval, onStatusChange }: ApprovalCardProps) {
+export default function ApprovalCard({ approval, onStatusChange, onView }: ApprovalCardProps) {
   const [confirming, setConfirming] = useState<"approve" | "reject" | null>(null);
   const s = statusStyles[approval.status];
   const isDone = approval.status !== "pending";
@@ -114,6 +115,27 @@ export default function ApprovalCard({ approval, onStatusChange }: ApprovalCardP
         {approval.status === "pending" ? (
           <>
             <button
+              onClick={() => onView(approval)}
+              style={{
+                padding: "7px 14px", borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: "transparent", color: "var(--text-muted)",
+                fontFamily: "var(--font-body)",
+                fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-subtle)'
+                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+              }}
+            >
+              View
+            </button>
+            <button
               onClick={() => handleAction("approve")}
               style={{
                 padding: "7px 14px", borderRadius: "8px",
@@ -157,13 +179,25 @@ export default function ApprovalCard({ approval, onStatusChange }: ApprovalCardP
             )}
           </>
         ) : (
-          <button style={{
-            padding: "7px 14px", borderRadius: "8px",
-            border: "1px solid var(--border)",
-            background: "transparent", color: "var(--text-muted)",
-            fontFamily: "var(--font-body)",
-            fontSize: "12px", fontWeight: 600, cursor: "pointer",
-          }}>
+          <button
+            onClick={() => onView(approval)}
+            style={{
+              padding: "7px 14px", borderRadius: "8px",
+              border: "1px solid var(--border)",
+              background: "transparent", color: "var(--text-muted)",
+              fontFamily: "var(--font-body)",
+              fontSize: "12px", fontWeight: 600, cursor: "pointer",
+              transition: "all 0.15s",
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-subtle)'
+              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+              ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+            }}
+          >
             View
           </button>
         )}

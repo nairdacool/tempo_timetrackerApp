@@ -276,6 +276,27 @@ export async function fetchRecentEntries() {
 
 // ===== REPORTS =====
 
+interface RawReportEntry {
+  id: string
+  user_id: string
+  project_id: string
+  date: string
+  description: string | null
+  start_time: string
+  end_time: string
+  duration_minutes: number
+  status: string
+  projects: {
+    name: string
+    client: string
+    color: string
+    budget_hours: number | null
+    status: string
+    billable?: boolean
+  } | null
+  profile?: { full_name: string; initials: string; color: string } | null
+}
+
 export async function fetchReportData(startDate: string, endDate: string, includeAllUsers = false) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
@@ -320,7 +341,7 @@ export async function fetchReportData(startDate: string, endDate: string, includ
   // For team view: fetch profiles for all unique user_ids in the result
   const profileMap = new Map<string, { full_name: string; initials: string; color: string }>()
   if (includeAllUsers && data && data.length > 0) {
-    const userIds = [...new Set(data.map((e: any) => e.user_id as string))]
+    const userIds = [...new Set((data as RawReportEntry[]).map(e => e.user_id))]
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, full_name, initials, color')
@@ -328,7 +349,7 @@ export async function fetchReportData(startDate: string, endDate: string, includ
     ;(profiles ?? []).forEach(p => profileMap.set(p.id, { full_name: p.full_name, initials: p.initials, color: p.color }))
   }
 
-  return (data ?? []).map((e: any) => ({
+  return ((data ?? []) as RawReportEntry[]).map(e => ({
     ...e,
     profile: profileMap.get(e.user_id) ?? null,
   }))

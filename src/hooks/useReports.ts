@@ -96,8 +96,8 @@ function buildProjectSummaries(entries: any[]): ProjectSummary[] {
         client:      proj?.client      ?? 'Internal',
         color:       proj?.color       ?? '#c8602a',
         hours:       0,
-        budgetHours: proj?.budget_hours ?? 80,
-        billable:    false,
+        budgetHours: proj?.budget_hours ?? 0,   // 0 = no budget set
+        billable:    proj?.billable    ?? true,  // default all projects to billable
         status:      proj?.status      ?? 'active',
       })
     }

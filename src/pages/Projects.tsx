@@ -54,6 +54,23 @@ export default function Projects() {
     }
   }
 
+  async function handleEditSave(updates: {
+    name: string;
+    color: string;
+    budgetHours: number;
+    status: string;
+  }) {
+    if (!editingProject) return;
+    await editProject(editingProject.id, updates);
+    setEditingProject(null);
+  }
+
+  async function handleDelete() {
+    if (!editingProject) return;
+    await removeProject(editingProject.id);
+    setEditingProject(null);
+  }
+
 
   // Loading state
   if (loading)
@@ -100,23 +117,6 @@ export default function Projects() {
         ⚠️ {error}
       </div>
     );
-
-  async function handleEditSave(updates: {
-    name: string;
-    color: string;
-    budgetHours: number;
-    status: string;
-  }) {
-    if (!editingProject) return;
-    await editProject(editingProject.id, updates);
-    setEditingProject(null);
-  }
-
-  async function handleDelete() {
-    if (!editingProject) return;
-    await removeProject(editingProject.id);
-    setEditingProject(null);
-  }
 
   return (
     <div>

@@ -1,6 +1,6 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import { useTeam } from "../hooks/useTeam";
-import { AuthContext } from "../context/AuthContextInstance";
+import { useAuth } from "../context/useAuth";
 import MemberCard from "../components/ui/MemberCard";
 import InviteMemberModal from "../components/ui/InviteMemberModal";
 import EditMemberModal from "../components/ui/EditMemberModal";
@@ -14,7 +14,8 @@ export default function Team() {
   const [roleFilter,     setRoleFilter]     = useState("All Roles");
   const [sortBy,         setSortBy]         = useState<SortKey>("name");
   const [hideInactive,   setHideInactive]   = useState(true);
-  const { isAdmin }                         = useContext(AuthContext);
+  const { profile }                         = useAuth();
+  const isAdmin                             = profile?.role === 'Admin';
   const { members, loading, error, updateMember, refresh } = useTeam();
   const [editingMember,  setEditingMember]  = useState<Member | null>(null);
 
@@ -153,18 +154,20 @@ export default function Team() {
           </button>
         )}
 
-        <button
-          onClick={() => setShowModal(true)}
-          style={{
-            marginLeft: "auto",
-            padding: "8px 18px", borderRadius: "8px",
-            background: "var(--accent)", color: "white",
-            border: "none", fontFamily: "var(--font-body)",
-            fontSize: "13px", fontWeight: 600, cursor: "pointer",
-          }}
-        >
-          + Invite Member
-        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setShowModal(true)}
+            style={{
+              marginLeft: "auto",
+              padding: "8px 18px", borderRadius: "8px",
+              background: "var(--accent)", color: "white",
+              border: "none", fontFamily: "var(--font-body)",
+              fontSize: "13px", fontWeight: 600, cursor: "pointer",
+            }}
+          >
+            + Invite Member
+          </button>
+        )}
       </div>
 
       {/* Grid */}
@@ -194,8 +197,8 @@ export default function Team() {
             />
           ))}
 
-          {/* Invite slot */}
-          <div
+          {/* Invite slot — admin only */}
+          {isAdmin && <div
             onClick={() => setShowModal(true)}
             style={{
               border: "2px dashed var(--border)",
@@ -218,7 +221,7 @@ export default function Team() {
           >
             <div style={{ fontSize: "28px", color: "var(--text-placeholder)" }}>+</div>
             <div style={{ fontSize: "13px", fontWeight: 600 }}>Invite Member</div>
-          </div>
+          </div>}
         </div>
       )}
 

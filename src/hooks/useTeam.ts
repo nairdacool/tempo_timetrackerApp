@@ -7,19 +7,6 @@ export function useTeam() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // Update current user's last_seen on mount
-    useEffect(() => {
-        async function updateLastSeen() {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
-            await supabase
-                .from('profiles')
-                .update({ last_seen: new Date().toISOString() })
-                .eq('id', user.id)
-        }
-        updateLastSeen()
-    }, [])
-
     async function load() {
         try {
             setLoading(true)
@@ -36,8 +23,7 @@ export function useTeam() {
                 .single()
             const currentUserIsAdmin = selfProfile?.role === 'Admin'
 
-            // Admins see all profiles in the workspace.
-            // Non-admins only see themselves.
+            // Admins see all profiles in the workspace; non-admins only see themselves.
             let query = supabase
                 .from('profiles')
                 .select('*')
@@ -48,86 +34,92 @@ export function useTeam() {
             }
 
             const { data, error } = await query
-
             if (error) throw new Error(error.message)
 
-            const members = await Promise.all((data ?? []).map(async profile => {
-                const now = new Date()
-                const monday = getThisMonday(now)
-                const weekStart = monday.toISOString().slice(0, 10)
-                const weekEnd = new Date(monday.getTime() + 6 * 86400000).toISOString().slice(0, 10)
-                const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+            const profiles = data ?? []
+            const profileIds = profiles.map(p => p.id)
+            const adminIds   = profiles.filter(p => p.role === 'Admin').map(p => p.id)
 
-                const [weekRes, monthRes, projectRes] = await Promise.all([
-                    supabase
-                        .from('time_entries')
-                        .select('duration_minutes')
-                        .eq('user_id', profile.id)
-                        .gte('date', weekStart)
-                        .lte('date', weekEnd),
-                    supabase
-                        .from('time_entries')
-                        .select('duration_minutes')
-                        .eq('user_id', profile.id)
-                        .gte('date', monthStart),
-                    // count memberships – we'll override for admins below
-                    supabase
-                        .from('project_members')
-                        .select('project_id')
-                        .eq('user_id', profile.id),
-                ])
+            if (profileIds.length === 0) {
+                setMembers([])
+                return
+            }
 
-                const weekMins = (weekRes.data ?? []).reduce((s, e) => s + e.duration_minutes, 0)
-                const monthMins = (monthRes.data ?? []).reduce((s, e) => s + e.duration_minutes, 0)
-                let projectCount = (projectRes.data ?? []).length
+            // ── Single batch of parallel queries (replaces N+1 pattern) ──
+            const now        = new Date()
+            const monday     = getThisMonday(now)
+            const weekStart  = monday.toISOString().slice(0, 10)
+            const weekEnd    = new Date(monday.getTime() + 6 * 86400000).toISOString().slice(0, 10)
+            const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
-                // Admins see a count of projects they own, not all projects
-                if (profile.role === 'Admin') {
-                    const { count: adminCount, error: countErr } = await supabase
-                        .from('projects')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('created_by', profile.id)
-                        .is('deleted_at', null)
-                        .neq('status', 'archived')
-                    if (!countErr) {
-                        projectCount = adminCount ?? 0
-                    }
-                }
+            const adminProjectsPromise = adminIds.length > 0
+                ? supabase
+                    .from('projects')
+                    .select('created_by')
+                    .in('created_by', adminIds)
+                    .is('deleted_at', null)
+                    .neq('status', 'archived')
+                : Promise.resolve({ data: [] as { created_by: string }[], error: null })
 
-                // Online = last_seen within 5 minutes
+            const [weekRes, monthRes, projectRes, adminProjRes] = await Promise.all([
+                supabase
+                    .from('time_entries')
+                    .select('user_id, duration_minutes')
+                    .in('user_id', profileIds)
+                    .gte('date', weekStart)
+                    .lte('date', weekEnd),
+                supabase
+                    .from('time_entries')
+                    .select('user_id, duration_minutes')
+                    .in('user_id', profileIds)
+                    .gte('date', monthStart),
+                supabase
+                    .from('project_members')
+                    .select('user_id, project_id')
+                    .in('user_id', profileIds),
+                adminProjectsPromise,
+            ])
+
+            // Build per-user aggregation maps in JS — O(rows), no extra queries
+            const weekMinsMap        = new Map<string, number>()
+            const monthMinsMap       = new Map<string, number>()
+            const memberProjectCount = new Map<string, number>()
+            const adminProjectCount  = new Map<string, number>()
+
+            for (const e of weekRes.data  ?? []) weekMinsMap.set(e.user_id,  (weekMinsMap.get(e.user_id)   ?? 0) + e.duration_minutes)
+            for (const e of monthRes.data ?? []) monthMinsMap.set(e.user_id, (monthMinsMap.get(e.user_id)  ?? 0) + e.duration_minutes)
+            for (const m of projectRes.data ?? []) memberProjectCount.set(m.user_id, (memberProjectCount.get(m.user_id) ?? 0) + 1)
+            for (const p of adminProjRes.data ?? []) adminProjectCount.set(p.created_by, (adminProjectCount.get(p.created_by) ?? 0) + 1)
+
+            const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000)
+
+            const members = profiles.map(profile => {
+                const weekMins  = weekMinsMap.get(profile.id)  ?? 0
+                const monthMins = monthMinsMap.get(profile.id) ?? 0
+                const isAdminProfile = profile.role === 'Admin'
+                const projectCount = isAdminProfile
+                    ? (adminProjectCount.get(profile.id) ?? 0)
+                    : (memberProjectCount.get(profile.id) ?? 0)
+
                 const lastSeen = profile.last_seen ? new Date(profile.last_seen) : null
-                const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000)
                 const isOnline = lastSeen ? lastSeen > fiveMinAgo : false
 
-                // Format last seen
-                function formatLastSeen(date: Date | null): string {
-                    if (!date) return 'Never'
-                    const diff = Date.now() - date.getTime()
-                    const mins = Math.floor(diff / 60000)
-                    const hrs = Math.floor(mins / 60)
-                    const days = Math.floor(hrs / 24)
-                    if (mins < 1) return 'Just now'
-                    if (mins < 60) return `${mins}m ago`
-                    if (hrs < 24) return `${hrs}h ago`
-                    return `${days}d ago`
-                }
-
                 return {
-                    id: profile.id,
-                    name: profile.full_name,
-                    initials: profile.initials,
-                    color: profile.color,
-                    role: profile.role,
-                    email: profile.email ?? '',
-                    isActive: profile.is_active ?? true,
-                    status: isOnline ? 'active' : 'offline',
-                    weekHours: Math.round((weekMins / 60) * 10) / 10,
-                    monthHours: Math.round((monthMins / 60) * 10) / 10,
-                    projects: projectCount,
-                    lastSeen: formatLastSeen(lastSeen),
+                    id:             profile.id,
+                    name:           profile.full_name,
+                    initials:       profile.initials,
+                    color:          profile.color,
+                    role:           profile.role,
+                    email:          profile.email ?? '',
+                    isActive:       profile.is_active ?? true,
+                    status:         isOnline ? 'active' : 'offline',
+                    weekHours:      Math.round((weekMins  / 60) * 10) / 10,
+                    monthHours:     Math.round((monthMins / 60) * 10) / 10,
+                    projects:       projectCount,
+                    lastSeen:       formatLastSeen(lastSeen),
                     organizationId: profile.organization_id ?? undefined,
                 } as Member
-            }))
+            })
 
             setMembers(members)
         } catch (err) {
@@ -163,4 +155,16 @@ function getThisMonday(date: Date): Date {
     d.setDate(d.getDate() + diff)
     d.setHours(0, 0, 0, 0)
     return d
+}
+
+function formatLastSeen(date: Date | null): string {
+    if (!date) return 'Never'
+    const diff = Date.now() - date.getTime()
+    const mins = Math.floor(diff / 60000)
+    const hrs  = Math.floor(mins / 60)
+    const days = Math.floor(hrs / 24)
+    if (mins < 1)  return 'Just now'
+    if (mins < 60) return `${mins}m ago`
+    if (hrs  < 24) return `${hrs}h ago`
+    return `${days}d ago`
 }
