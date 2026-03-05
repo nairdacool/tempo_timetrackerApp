@@ -36,54 +36,15 @@ export function useTeam() {
                 .single()
             const currentUserIsAdmin = selfProfile?.role === 'Admin'
 
-            let profileIds: string[] | null = null
-
-            if (currentUserIsAdmin) {
-                // Get IDs of projects this admin owns
-                const { data: ownedProjects } = await supabase
-                    .from('projects')
-                    .select('id')
-                    .eq('created_by', user.id)
-                    .is('deleted_at', null)
-
-                const projectIds = (ownedProjects ?? []).map(p => p.id)
-
-                // Get member IDs from those projects
-                const memberIdSet = new Set<string>([user.id])
-
-                if (projectIds.length > 0) {
-                    const { data: projectMembers } = await supabase
-                        .from('project_members')
-                        .select('user_id')
-                        .in('project_id', projectIds)
-                    ;(projectMembers ?? []).forEach(m => memberIdSet.add(m.user_id))
-                }
-
-                // Also include profiles in orgs owned by this admin
-                const { data: ownedOrgs } = await supabase
-                    .from('organizations')
-                    .select('id')
-                    .eq('created_by', user.id)
-                const orgIds = (ownedOrgs ?? []).map(o => o.id)
-
-                if (orgIds.length > 0) {
-                    const { data: orgProfiles } = await supabase
-                        .from('profiles')
-                        .select('id')
-                        .in('organization_id', orgIds)
-                    ;(orgProfiles ?? []).forEach(p => memberIdSet.add(p.id))
-                }
-
-                profileIds = Array.from(memberIdSet)
-            }
-
+            // Admins see all profiles in the workspace.
+            // Non-admins only see themselves.
             let query = supabase
                 .from('profiles')
                 .select('*')
                 .order('full_name', { ascending: true })
 
-            if (profileIds !== null) {
-                query = query.in('id', profileIds)
+            if (!currentUserIsAdmin) {
+                query = query.eq('id', user.id)
             }
 
             const { data, error } = await query

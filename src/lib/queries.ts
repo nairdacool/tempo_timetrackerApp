@@ -534,7 +534,7 @@ export async function fetchOrganizations(): Promise<Organization[]> {
     const [{ data: members }, { data: projects }] = await Promise.all([
       supabase
         .from('profiles')
-        .select('id, full_name, initials, color, role, email')
+        .select('id, full_name, initials, color, role')
         .eq('organization_id', org.id),
       supabase
         .from('projects')
@@ -553,7 +553,6 @@ export async function fetchOrganizations(): Promise<Organization[]> {
         initials: m.initials,
         color:    m.color,
         role:     m.role,
-        email:    m.email,
       })),
       projects: (projects ?? []).map(p => ({
         id:     p.id,
