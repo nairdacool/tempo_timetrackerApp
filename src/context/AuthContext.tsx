@@ -36,31 +36,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error || !data) return null;
 
-    // user_metadata.organization is the authoritative source — it's what the
-    // user typed at signup. The DB trigger ignores it and hardcodes a dummy
-    // value, so we always sync it back on load.
-    const orgToUse = metaOrg || data.organization || 'Tempo'
+    // profiles.organization is purely a display label (shown in the sidebar).
+    // user_metadata.organization is the authoritative source set at signup.
+    // Sync it back if the DB trigger stored a wrong value.
+    const orgToUse = metaOrg || data.organization || 'Tempo';
 
     if (metaOrg && data.organization !== metaOrg) {
-      // Persist the correct org name to the profiles row
       await supabase
         .from('profiles')
         .update({ organization: metaOrg })
-        .eq('id', userId)
-    }
-
-    // Auto-create the Organization record for this admin if they don't have one yet.
-    // Use orgToUse (which already resolved metadata → DB → fallback) as the org name.
-    if (data.role === 'Admin') {
-      const { data: existingOrgs, error: countErr } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('created_by', userId)
-      if (!countErr && (!existingOrgs || existingOrgs.length === 0)) {
-        await supabase
-          .from('organizations')
-          .insert({ name: orgToUse, created_by: userId })
-      }
+        .eq('id', userId);
     }
 
     return {
