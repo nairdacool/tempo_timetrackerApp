@@ -38,13 +38,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // profiles.organization is purely a display label (shown in the sidebar).
     // user_metadata.organization is the authoritative source set at signup.
-    // Sync it back if the DB trigger stored a wrong value.
-    const orgToUse = metaOrg || data.organization || 'Tempo';
+    // Use metaOrg if it exists (even empty string beats a stale DB value).
+    const orgToUse = metaOrg !== undefined ? metaOrg.trim() : (data.organization?.trim() ?? '');
 
-    if (metaOrg && data.organization !== metaOrg) {
+    if (metaOrg !== undefined && data.organization !== orgToUse) {
       await supabase
         .from('profiles')
-        .update({ organization: metaOrg })
+        .update({ organization: orgToUse })
         .eq('id', userId);
     }
 
