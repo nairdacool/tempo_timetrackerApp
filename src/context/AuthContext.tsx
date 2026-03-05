@@ -36,13 +36,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (error || !data) return null;
 
+    // The DB trigger hardcodes 'dummy organization' — replace it with the
+    // real value from signup metadata and persist it so it only happens once.
+    const isDummy = !data.organization || data.organization === 'dummy organization'
+    const realOrg = isDummy ? (fallbackOrg || 'Tempo') : data.organization
+
+    if (isDummy && fallbackOrg) {
+      await supabase
+        .from('profiles')
+        .update({ organization: fallbackOrg })
+        .eq('id', userId)
+    }
+
     return {
       id:           data.id,
       fullName:     data.full_name,
       initials:     data.initials,
       role:         data.role,
       color:        data.color,
-      organization: data.organization || fallbackOrg || 'Tempo',
+      organization: realOrg,
     } as UserProfile;
   }
 
