@@ -6,7 +6,7 @@ import { AuthContext } from '../../context/AuthContextInstance'
 
 interface EditProjectModalProps {
   project:  Project
-  onSave:   (updates: { name: string; color: string; budgetHours: number; status: string }) => Promise<void>
+  onSave:   (updates: { name: string; color: string; budgetHours: number; billable: boolean; status: string }) => Promise<void>
   onDelete: () => Promise<void>
   onClose:  () => void
 }
@@ -30,6 +30,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
   const [name,          setName]          = useState(project.name)
   const [color,         setColor]         = useState(project.color)
   const [budgetHours,   setBudgetHours]   = useState(project.budgetHours)
+  const [billable,      setBillable]      = useState(project.billable ?? true)
   const [status,        setStatus]        = useState<string>(project.status)
   const [saving,        setSaving]        = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -91,7 +92,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
     try {
       setSaving(true)
       setError(null)
-      await onSave({ name: name.trim(), color, budgetHours, status })
+      await onSave({ name: name.trim(), color, budgetHours, billable, status })
       // Update organization assignment
       if (orgId) {
         await addProjectToOrg(orgId, project.id)
@@ -220,6 +221,33 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Billable toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={labelStyle}>Billable</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>
+                {billable ? 'Hours count toward billable totals' : 'Internal / non-billable project'}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBillable(b => !b)}
+              style={{
+                width: 40, height: 22, borderRadius: 11,
+                border: 'none', cursor: 'pointer', position: 'relative',
+                background: billable ? 'var(--accent)' : 'var(--border)',
+                transition: 'background 0.2s', flexShrink: 0,
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: 3,
+                left: billable ? 21 : 3,
+                width: 16, height: 16, borderRadius: '50%',
+                background: 'white', transition: 'left 0.2s',
+              }} />
+            </button>
           </div>
 
           {/* Organization — admin only */}

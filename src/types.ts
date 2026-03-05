@@ -35,6 +35,7 @@ export interface Project {
   color: string
   loggedHours: number
   budgetHours: number
+  billable: boolean
   status: 'active' | 'on-hold' | 'completed' | 'archived'
   team: TeamMember[]
   organizationId?: string
@@ -90,7 +91,8 @@ export interface Approval {
   projects:      { name: string; color: string; hours: number }[]  // ← change this
   entryCount:    number
   submittedDate: string
-  status:        ApprovalStatus
+  status:           ApprovalStatus
+  rejectionReason?: string
 }
 
 export type MemberRole = 'Admin' | 'Developer' | 'Designer' | 'Other' | string

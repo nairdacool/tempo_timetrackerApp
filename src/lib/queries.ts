@@ -55,6 +55,7 @@ async function fetchProjectsBase(activeOnly: boolean): Promise<Project[]> {
       color: p.color,
       loggedHours: Math.round((loggedMinutes / 60) * 10) / 10,
       budgetHours: p.budget_hours,
+      billable: p.billable ?? true,
       status: p.status,
       team: [],
       organizationId: p.organization_id ?? undefined,
@@ -84,6 +85,7 @@ export async function createProject(
       client: project.client,
       color: project.color,
       budget_hours: project.budgetHours,
+      billable: project.billable,
       status: project.status,
       created_by: user?.id,
       ...(project.organizationId ? { organization_id: project.organizationId } : {}),
@@ -298,6 +300,7 @@ interface RawReportEntry {
     client: string
     color: string
     budget_hours: number | null
+    billable: boolean | null
     status: string
     billable?: boolean
   } | null
@@ -310,7 +313,7 @@ export async function fetchReportData(startDate: string, endDate: string, includ
 
   let query = supabase
     .from('time_entries')
-    .select(`*, projects (name, client, color, budget_hours, status)`)
+    .select(`*, projects (name, client, color, budget_hours, billable, status)`)
     .gte('date', startDate)
     .lte('date', endDate)
     .order('date', { ascending: true })
@@ -432,6 +435,7 @@ export async function fetchApprovals() {
       entryCount: entryList.length,
       submittedDate: new Date(a.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       status: a.status as 'pending' | 'approved' | 'rejected',
+      rejectionReason: a.rejection_reason ?? undefined,
     }
   })
 }
@@ -486,7 +490,7 @@ export async function submitWeekForApproval(weekStart: string, weekEnd: string):
     .lte('date', weekEnd)
 }
 
-export async function updateApprovalStatus(id: string, status: 'approved' | 'rejected'): Promise<void> {
+export async function updateApprovalStatus(id: string, status: 'approved' | 'rejected', reason?: string): Promise<void> {
   const { data: approval, error: fetchErr } = await supabase
     .from('approvals')
     .select('user_id, week_start, week_end')
@@ -497,7 +501,11 @@ export async function updateApprovalStatus(id: string, status: 'approved' | 'rej
 
   const { error: approvalErr } = await supabase
     .from('approvals')
-    .update({ status, reviewed_at: new Date().toISOString() })
+    .update({
+      status,
+      reviewed_at: new Date().toISOString(),
+      ...(status === 'rejected' && reason ? { rejection_reason: reason } : { rejection_reason: null }),
+    })
     .eq('id', id)
 
   if (approvalErr) throw new Error(approvalErr.message)
@@ -577,6 +585,7 @@ export async function updateProject(id: string, updates: {
   name: string
   color: string
   budgetHours: number
+  billable: boolean
   status: string
 }): Promise<void> {
   const { error } = await supabase
@@ -585,6 +594,7 @@ export async function updateProject(id: string, updates: {
       name: updates.name,
       color: updates.color,
       budget_hours: updates.budgetHours,
+      billable: updates.billable,
       status: updates.status,
     })
     .eq('id', id)

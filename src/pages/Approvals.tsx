@@ -128,7 +128,7 @@ export default function Approvals() {
           <ApprovalCard
             key={approval.id}
             approval={approval}
-            onStatusChange={(id, status) => changeStatus(id as string, status as 'approved' | 'rejected')}
+            onStatusChange={(id, status, reason) => changeStatus(id, status, reason)}
             onView={setViewingApproval}
           />
         ))

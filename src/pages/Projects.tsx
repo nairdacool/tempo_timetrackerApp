@@ -58,6 +58,7 @@ export default function Projects() {
     name: string;
     color: string;
     budgetHours: number;
+    billable: boolean;
     status: string;
   }) {
     if (!editingProject) return;

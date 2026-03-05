@@ -136,6 +136,19 @@ export default function ApprovalDetailModal({ approval, onClose }: Props) {
           </button>
         </div>
 
+        {/* Rejection reason banner */}
+        {approval.status === 'rejected' && approval.rejectionReason && (
+          <div style={{
+            padding: '12px 24px',
+            borderBottom: '1px solid var(--border)',
+            background: '#fde8e8',
+            display: 'flex', gap: '10px', alignItems: 'flex-start',
+          }}>
+            <span style={{ color: '#c03030', fontWeight: 700, fontSize: '13px', flexShrink: 0 }}>✗ Rejection reason:</span>
+            <span style={{ color: '#c03030', fontSize: '13px' }}>{approval.rejectionReason}</span>
+          </div>
+        )}
+
         {/* Project summary chips */}
         {approval.projects.length > 0 && (
           <div style={{
