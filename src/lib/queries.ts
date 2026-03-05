@@ -126,6 +126,28 @@ export async function fetchTimeEntries(weekDates: string[], targetUserId?: strin
   }))
 }
 
+export async function fetchWeekRejectionReason(
+  weekStart: string,
+  weekEnd: string,
+  targetUserId?: string
+): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const userId = targetUserId ?? user.id
+
+  const { data } = await supabase
+    .from('approvals')
+    .select('rejection_reason')
+    .eq('user_id', userId)
+    .eq('week_start', weekStart)
+    .eq('week_end', weekEnd)
+    .eq('status', 'rejected')
+    .maybeSingle()
+
+  return data?.rejection_reason ?? null
+}
+
 export async function insertTimeEntry(entry: {
   projectId: string
   description: string
@@ -436,6 +458,7 @@ export async function fetchApprovals() {
       submittedDate: new Date(a.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       status: a.status as 'pending' | 'approved' | 'rejected',
       rejectionReason: a.rejection_reason ?? undefined,
+      resubmitted: a.status === 'pending' && a.reviewed_at != null,
     }
   })
 }
@@ -448,7 +471,6 @@ export async function submitWeekForApproval(weekStart: string, weekEnd: string):
     .from('time_entries')
     .select('duration_minutes')
     .eq('user_id', user.id)
-    .in('status', ['draft', 'rejected'])
     .gte('date', weekStart)
     .lte('date', weekEnd)
 
@@ -465,13 +487,9 @@ export async function submitWeekForApproval(weekStart: string, weekEnd: string):
     .single()
 
   if (existing) {
-    // Do not allow re-submission of an already-approved week
-    if (existing.status === 'approved') {
-      throw new Error('This week has already been approved and cannot be resubmitted.')
-    }
     const { error } = await supabase
       .from('approvals')
-      .update({ status: 'pending', total_hours: totalHours, submitted_at: new Date().toISOString() })
+      .update({ status: 'pending', total_hours: totalHours, submitted_at: new Date().toISOString(), rejection_reason: null })
       .eq('id', existing.id)
     if (error) throw new Error(error.message)
   } else {

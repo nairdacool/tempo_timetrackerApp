@@ -125,6 +125,22 @@ export default function ApprovalCard({ approval, onStatusChange, onView }: Appro
         {s.label}
       </span>
 
+      {/* Resubmitted indicator */}
+      {approval.resubmitted && (
+        <span
+          title="This timesheet was previously rejected and has been resubmitted"
+          style={{
+            display: "inline-flex", alignItems: "center",
+            padding: "4px 9px", borderRadius: "20px",
+            fontSize: "11px", fontWeight: 600,
+            background: "var(--bg-subtle)", color: "var(--text-muted)",
+            flexShrink: 0, cursor: "help",
+          }}
+        >
+          ↩ Resubmitted
+        </span>
+      )}
+
       {/* Actions */}
       <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
         {approval.status === "pending" ? (

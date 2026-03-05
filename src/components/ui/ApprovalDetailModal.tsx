@@ -149,6 +149,20 @@ export default function ApprovalDetailModal({ approval, onClose }: Props) {
           </div>
         )}
 
+        {/* Resubmitted notice */}
+        {approval.resubmitted && approval.status === 'pending' && (
+          <div style={{
+            padding: '10px 24px',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--bg-subtle)',
+            display: 'flex', gap: '8px', alignItems: 'center',
+            fontSize: '12px', color: 'var(--text-muted)',
+          }}>
+            <span>↩</span>
+            <span>This timesheet was <strong style={{ color: 'var(--text)', fontWeight: 600 }}>previously rejected</strong> and has been resubmitted for review.</span>
+          </div>
+        )}
+
         {/* Project summary chips */}
         {approval.projects.length > 0 && (
           <div style={{

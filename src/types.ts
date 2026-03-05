@@ -93,6 +93,7 @@ export interface Approval {
   submittedDate: string
   status:           ApprovalStatus
   rejectionReason?: string
+  resubmitted?:     boolean
 }
 
 export type MemberRole = 'Admin' | 'Developer' | 'Designer' | 'Other' | string
