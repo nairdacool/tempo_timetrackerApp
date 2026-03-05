@@ -237,7 +237,7 @@ export default function Sidebar({
               {profile?.fullName ?? userEmail}
             </div>
             <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-              {profile?.role ?? "Member"} · {profile?.organization ?? "Tempo"}
+              {profile?.role ?? "Member"}{profile?.organization ? ` · ${profile.organization}` : ''}
             </div>
           </div>
         </div>

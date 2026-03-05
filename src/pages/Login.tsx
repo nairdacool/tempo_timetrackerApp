@@ -55,7 +55,7 @@ export default function Login() {
             initials:     getInitials(name),
             role:         'Admin',
             color:        '#c8602a',
-            organization: organization.trim() || 'My Organization',
+            organization: organization.trim(),
           }
         }
       })
