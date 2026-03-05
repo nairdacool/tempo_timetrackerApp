@@ -6,9 +6,10 @@ import type { Project } from '../types'
 
 interface UseTimeEntriesOptions {
   weekDates: string[]
+  userId?: string   // if provided, fetch this user's entries (admin view)
 }
 
-export function useTimeEntries({ weekDates }: UseTimeEntriesOptions) {
+export function useTimeEntries({ weekDates, userId }: UseTimeEntriesOptions) {
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
@@ -19,7 +20,7 @@ export function useTimeEntries({ weekDates }: UseTimeEntriesOptions) {
       setLoading(true)
       setError(null)
       const [entriesData, projectsData] = await Promise.all([
-        fetchTimeEntries(weekDates),
+        fetchTimeEntries(weekDates, userId),
         fetchActiveProjects(),
       ])
       setEntries(entriesData)
@@ -34,7 +35,7 @@ export function useTimeEntries({ weekDates }: UseTimeEntriesOptions) {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weekDates.join(',')])
+  }, [weekDates.join(','), userId])
 
   async function addEntry(entry: {
     projectId: string

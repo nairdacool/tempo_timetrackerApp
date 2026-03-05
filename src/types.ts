@@ -57,6 +57,23 @@ export interface ProjectSummary {
   status: 'active' | 'on-hold' | 'completed' | 'archived'
 }
 
+export interface MemberSummary {
+  memberId:     string
+  name:         string
+  initials:     string
+  color:        string
+  hours:        number
+  projectCount: number
+}
+
+export interface DetailEntry {
+  date:        string
+  member:      string
+  project:     string
+  description: string
+  hours:       number
+}
+
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
 
 export interface Approval {

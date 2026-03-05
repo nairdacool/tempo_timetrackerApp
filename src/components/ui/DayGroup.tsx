@@ -11,7 +11,7 @@ interface DayGroupProps {
   label: string      // e.g. 'Monday, Feb 23'
   totalHours: string // e.g. '4.5h'
   entries: TimeEntry[]
-  onEntryClick: (entry: TimeEntry) => void 
+  onEntryClick?: (entry: TimeEntry) => void 
 }
 
 export default function DayGroup({ label, totalHours, entries, onEntryClick }: DayGroupProps) {
@@ -37,7 +37,7 @@ export default function DayGroup({ label, totalHours, entries, onEntryClick }: D
         return (
           <div
             key={entry.id}
-            onClick={() => onEntryClick(entry)}
+            onClick={() => onEntryClick?.(entry)}
             style={{
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
@@ -45,7 +45,7 @@ export default function DayGroup({ label, totalHours, entries, onEntryClick }: D
               padding: '14px 16px',
               marginBottom: '4px',
               display: 'flex', alignItems: 'center', gap: '14px',
-              cursor: 'pointer',
+              cursor: onEntryClick ? 'pointer' : 'default',
               transition: 'all 0.15s',
             }}
             onMouseEnter={e => {
