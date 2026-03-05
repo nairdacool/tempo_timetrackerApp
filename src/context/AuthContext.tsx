@@ -49,16 +49,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
     }
 
-    // Auto-create the Organization record for this admin if they don't have one yet
-    if (data.role === 'Admin' && metaOrg) {
-      const { count } = await supabase
+    // Auto-create the Organization record for this admin if they don't have one yet.
+    // Use orgToUse (which already resolved metadata → DB → fallback) as the org name.
+    if (data.role === 'Admin') {
+      const { data: existingOrgs, error: countErr } = await supabase
         .from('organizations')
-        .select('id', { count: 'exact', head: true })
+        .select('id')
         .eq('created_by', userId)
-      if ((count ?? 0) === 0) {
+      if (!countErr && (!existingOrgs || existingOrgs.length === 0)) {
         await supabase
           .from('organizations')
-          .insert({ name: metaOrg, created_by: userId })
+          .insert({ name: orgToUse, created_by: userId })
       }
     }
 
