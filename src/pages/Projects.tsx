@@ -15,9 +15,10 @@ export default function Projects() {
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState("All Clients");
+  const [statusFilter, setStatusFilter] = useState("All Status");
   const [showArchived, setShowArchived] = useState(false);
-  const activeProjects = projects.filter((p) => p.status !== "archived");
-  const archivedProjects = projects.filter((p) => p.status === "archived");
+  const activeProjects = projects.filter((p) => p.status !== "archived" && p.status !== "completed");
+  const inactiveProjects = projects.filter((p) => p.status === "archived" || p.status === "completed");
   const visibleProjects = showArchived ? projects : activeProjects;
   const { isMobile, isTablet } = useBreakpoint();
 
@@ -31,7 +32,9 @@ export default function Projects() {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
     const matchClient =
       clientFilter === "All Clients" || p.client === clientFilter;
-    return matchSearch && matchClient;
+    const matchStatus =
+      statusFilter === "All Status" || p.status === statusFilter;
+    return matchSearch && matchClient && matchStatus;
   });
 
   async function handleAddProject(project: Project) {
@@ -144,9 +147,12 @@ export default function Projects() {
             width: isMobile ? "100%" : "260px",
           }}
         />
-        {archivedProjects.length > 0 && (
+        {inactiveProjects.length > 0 && (
           <button
-            onClick={() => setShowArchived((v) => !v)}
+            onClick={() => {
+              if (showArchived) setStatusFilter("All Status")
+              setShowArchived((v) => !v)
+            }}
             style={{
               padding: "8px 14px",
               borderRadius: "8px",
@@ -178,10 +184,32 @@ export default function Projects() {
               />
             </svg>
             {showArchived
-              ? "Hide archived"
-              : `Show archived (${archivedProjects.length})`}
+              ? "Hide completed & archived"
+              : `Show completed & archived (${inactiveProjects.length})`}
           </button>
         )}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: "13px",
+            color: "var(--text)",
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            padding: "8px 12px",
+            outline: "none",
+            cursor: "pointer",
+          }}
+        >
+          <option value="All Status">All Status</option>
+          <option value="active">Active</option>
+          <option value="on-hold">On Hold</option>
+          {showArchived && <option value="completed">Completed</option>}
+          {showArchived && <option value="archived">Archived</option>}
+        </select>
+
         <select
           value={clientFilter}
           onChange={(e) => setClientFilter(e.target.value)}
@@ -215,8 +243,8 @@ export default function Projects() {
           {activeProjects.filter((p) => p.status === "active").length} active
           &nbsp;·&nbsp;
           {activeProjects.filter((p) => p.status === "on-hold").length} on hold
-          {archivedProjects.length > 0 && (
-            <>&nbsp;·&nbsp;{archivedProjects.length} archived</>
+          {inactiveProjects.length > 0 && (
+            <>&nbsp;·&nbsp;{inactiveProjects.length} hidden</>
           )}
         </div>
 
@@ -268,10 +296,8 @@ export default function Projects() {
           display: "grid",
           gridTemplateColumns: isMobile
             ? "1fr"
-            : isTablet
-              ? "repeat(2, 1fr)"
-              : "repeat(3, 1fr)",
-          gap: "16px",
+            : "repeat(auto-fill, minmax(280px, 1fr))",
+          gap: "14px",
         }}
       >
         {filtered.map((project) => (

@@ -182,8 +182,8 @@ export default function Team() {
       ) : (
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "16px",
+          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+          gap: "14px",
         }}>
           {filtered.map((member) => (
             <MemberCard

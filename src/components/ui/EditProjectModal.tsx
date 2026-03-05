@@ -36,9 +36,10 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
   const [error,         setError]         = useState<string | null>(null)
 
   // Member assignment state
-  const [members,     setMembers]     = useState<any[]>([])
-  const [allProfiles, setAllProfiles] = useState<any[]>([])
+  const [members,      setMembers]      = useState<any[]>([])
+  const [allProfiles,  setAllProfiles]  = useState<any[]>([])
   const [memberLoading, setMemberLoading] = useState(false)
+  const [memberSearch, setMemberSearch] = useState('')
 
   // Organization state
   const [orgs,  setOrgs]  = useState<Organization[]>([])
@@ -54,7 +55,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
       try {
         const [currentMembers, profilesRes, orgList] = await Promise.all([
           fetchProjectMembers(project.id),
-          supabase.from('profiles').select('id, full_name, initials, color, role').order('full_name'),
+          supabase.from('profiles').select('id, full_name, initials, color, role').eq('is_active', true).order('full_name'),
           fetchOrganizations(),
         ])
         setMembers(currentMembers)
@@ -262,67 +263,96 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
               {memberLoading ? (
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '8px 0' }}>Loading…</div>
               ) : (
-                <div style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: '10px', overflow: 'hidden',
-                }}>
-                  {allProfiles.map((profile, i) => {
-                    const isMember = members.some(m => m.id === profile.id)
-                    return (
-                      <div
-                        key={profile.id}
-                        onClick={() => handleToggleMember(profile.id)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '10px',
-                          padding: '10px 14px',
-                          borderBottom: i < allProfiles.length - 1 ? '1px solid var(--border)' : 'none',
-                          cursor: 'pointer',
-                          background: isMember ? 'var(--accent-light)' : 'transparent',
-                          transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={e => {
-                          if (!isMember) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-subtle)'
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLDivElement).style.background = isMember ? 'var(--accent-light)' : 'transparent'
-                        }}
-                      >
-                        {/* Avatar */}
-                        <div style={{
-                          width: '30px', height: '30px', borderRadius: '50%',
-                          background: profile.color,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '11px', fontWeight: 700, color: 'white', flexShrink: 0,
-                        }}>
-                          {profile.initials}
-                        </div>
+                <>
+                  {/* Search input */}
+                  <div style={{ position: 'relative', marginBottom: '8px' }}>
+                    <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}>
+                      <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35"/>
+                    </svg>
+                    <input
+                      type="text"
+                      placeholder="Search members…"
+                      value={memberSearch}
+                      onChange={e => setMemberSearch(e.target.value)}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        padding: '7px 10px 7px 30px',
+                        fontFamily: 'var(--font-body)', fontSize: '13px',
+                        color: 'var(--text)', background: 'var(--bg-card)',
+                        border: '1px solid var(--border)', borderRadius: '8px', outline: 'none',
+                      }}
+                    />
+                  </div>
 
-                        {/* Name + role */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
-                            {profile.full_name}
-                          </div>
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{profile.role}</div>
-                        </div>
-
-                        {/* Checkmark */}
-                        <div style={{
-                          width: '20px', height: '20px', borderRadius: '50%',
-                          border: isMember ? 'none' : '2px solid var(--border)',
-                          background: isMember ? 'var(--accent)' : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0, transition: 'all 0.15s',
-                        }}>
-                          {isMember && (
-                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                              <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
-                        </div>
+                  {/* Member list */}
+                  <div style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: '10px', overflow: 'hidden',
+                    maxHeight: '260px', overflowY: 'auto',
+                  }}>
+                    {allProfiles.filter(p =>
+                      p.full_name.toLowerCase().includes(memberSearch.toLowerCase())
+                    ).length === 0 ? (
+                      <div style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        No members match
                       </div>
-                    )
-                  })}
-                </div>
+                    ) : allProfiles.filter(p =>
+                        p.full_name.toLowerCase().includes(memberSearch.toLowerCase())
+                      ).map((profile, i, arr) => {
+                        const isMember = members.some(m => m.id === profile.id)
+                        return (
+                          <div
+                            key={profile.id}
+                            onClick={() => handleToggleMember(profile.id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '10px',
+                              padding: '10px 14px',
+                              borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none',
+                              cursor: 'pointer',
+                              background: isMember ? 'var(--accent-light)' : 'transparent',
+                              transition: 'background 0.15s',
+                            }}
+                            onMouseEnter={e => {
+                              if (!isMember) (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-subtle)'
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLDivElement).style.background = isMember ? 'var(--accent-light)' : 'transparent'
+                            }}
+                          >
+                            <div style={{
+                              width: '30px', height: '30px', borderRadius: '50%',
+                              background: profile.color,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '11px', fontWeight: 700, color: 'white', flexShrink: 0,
+                            }}>
+                              {profile.initials}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+                                {profile.full_name}
+                              </div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{profile.role}</div>
+                            </div>
+                            <div style={{
+                              width: '20px', height: '20px', borderRadius: '50%',
+                              border: isMember ? 'none' : '2px solid var(--border)',
+                              background: isMember ? 'var(--accent)' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              flexShrink: 0, transition: 'all 0.15s',
+                            }}>
+                              {isMember && (
+                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                  <path d="M2 5l2.5 2.5L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })
+                    }
+                  </div>
+                </>
               )}
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
                 {members.length} member{members.length !== 1 ? 's' : ''} assigned

@@ -56,7 +56,7 @@ export default function ProjectCard({ project, onClick, readOnly }: ProjectCardP
       {/* Color header bar */}
       <div style={{ height: "6px", background: project.color }} />
 
-      <div style={{ padding: "18px" }}>
+      <div style={{ padding: "14px 16px" }}>
         {/* Name + client */}
         <div
           style={{
@@ -72,19 +72,19 @@ export default function ProjectCard({ project, onClick, readOnly }: ProjectCardP
           style={{
             fontSize: "12px",
             color: "var(--text-muted)",
-            marginBottom: "16px",
+            marginBottom: "12px",
           }}
         >
           {project.client}
         </div>
 
         {/* Stats row */}
-        <div style={{ display: "flex", gap: "20px", marginBottom: "12px" }}>
+        <div style={{ display: "flex", gap: "16px", marginBottom: "10px" }}>
           <div>
             <div
               style={{
                 fontFamily: "var(--font-display)",
-                fontSize: "22px",
+                fontSize: "20px",
                 color: "var(--text)",
                 lineHeight: 1,
               }}
@@ -108,7 +108,7 @@ export default function ProjectCard({ project, onClick, readOnly }: ProjectCardP
             <div
               style={{
                 fontFamily: "var(--font-display)",
-                fontSize: "22px",
+                fontSize: "20px",
                 color: "var(--text)",
                 lineHeight: 1,
               }}
@@ -132,7 +132,7 @@ export default function ProjectCard({ project, onClick, readOnly }: ProjectCardP
             <div
               style={{
                 fontFamily: "var(--font-display)",
-                fontSize: "22px",
+                fontSize: "20px",
                 lineHeight: 1,
                 color: isOverBudget ? "#e05050" : "var(--text)",
               }}
@@ -161,7 +161,7 @@ export default function ProjectCard({ project, onClick, readOnly }: ProjectCardP
             background: "var(--bg-subtle)",
             borderRadius: "3px",
             overflow: "hidden",
-            marginBottom: "14px",
+            marginBottom: "10px",
           }}
         >
           <div

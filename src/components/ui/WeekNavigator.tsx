@@ -1,17 +1,18 @@
 import { useBreakpoint } from '../../hooks/useBreakpoint'
 
 interface WeekNavigatorProps {
-  weekLabel:   string
-  totalHours:  string
-  onPrev:      () => void
-  onNext:      () => void
-  onSubmit:    () => void
-  onExport:    () => void
-  submitting?: boolean
+  weekLabel:    string
+  totalHours:   string
+  onPrev:       () => void
+  onNext:       () => void
+  onSubmit:     () => void
+  onExport:     () => void
+  submitting?:  boolean
+  canSubmit?:   boolean
 }
 
 export default function WeekNavigator({
-  weekLabel, totalHours, onPrev, onNext, onSubmit, onExport, submitting,
+  weekLabel, totalHours, onPrev, onNext, onSubmit, onExport, submitting, canSubmit = true,
 }: WeekNavigatorProps) {
   const { isMobile } = useBreakpoint()
 
@@ -82,15 +83,17 @@ export default function WeekNavigator({
 
         <button
           onClick={onSubmit}
-          disabled={submitting}
+          disabled={submitting || !canSubmit}
+          title={!canSubmit ? 'No draft entries to submit' : undefined}
           style={{
             padding: '8px 16px', borderRadius: '8px',
-            background: submitting ? 'var(--bg-subtle)' : 'var(--accent)',
-            color: submitting ? 'var(--text-muted)' : 'white',
+            background: (submitting || !canSubmit) ? 'var(--bg-subtle)' : 'var(--accent)',
+            color: (submitting || !canSubmit) ? 'var(--text-muted)' : 'white',
             border: 'none', fontFamily: 'var(--font-body)',
             fontSize: '13px', fontWeight: 600,
-            cursor: submitting ? 'not-allowed' : 'pointer',
+            cursor: (submitting || !canSubmit) ? 'not-allowed' : 'pointer',
             flex: isMobile ? 1 : 'none',
+            opacity: !canSubmit ? 0.5 : 1,
           }}
         >
           {submitting ? 'Submitting…' : 'Submit for Approval'}

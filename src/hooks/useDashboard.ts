@@ -10,14 +10,19 @@ interface RecentEntry {
   id: string
   project: string
   projectColor: string
+  projectId: string
   description: string
-  date: string
+  date: string        // 'YYYY-MM-DD'
+  dateLabel: string   // formatted display string
+  startTime: string
+  endTime: string
   duration: string
   status: 'approved' | 'pending' | 'draft'
 }
 
 interface DashboardData {
   weekHours: number
+  lastWeekHours: number
   monthHours: number
   projectCount: number
   pendingCount: number
@@ -54,10 +59,11 @@ export function useDashboard(refreshKey = 0) {
       })
 
       setData({
-        weekHours:    stats.weekHours,
-        monthHours:   stats.monthHours,
-        projectCount: stats.projectCount,
-        pendingCount: stats.pendingCount,
+        weekHours:     stats.weekHours,
+        lastWeekHours: stats.lastWeekHours,
+        monthHours:    stats.monthHours,
+        projectCount:  stats.projectCount,
+        pendingCount:  stats.pendingCount,
         weekBars,
         recentEntries: recent,
       })

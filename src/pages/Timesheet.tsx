@@ -154,8 +154,9 @@ export default function Timesheet() {
       setSubmitted(true);
       toast.success("Timesheet submitted for approval!");
     } catch (err) {
-      toast.error("Failed to submit timesheet");
-      setSubmitError(err instanceof Error ? err.message : "Failed to submit");
+      const msg = err instanceof Error ? err.message : "Failed to submit";
+      toast.error(msg);
+      setSubmitError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -342,6 +343,7 @@ export default function Timesheet() {
         onSubmit={handleSubmit}
         onExport={handleExportCsv}
         submitting={submitting}
+        canSubmit={!isViewingOther && entries.some(e => e.status === 'draft' || e.status === 'rejected')}
       />
       {submitted && (
         <div
@@ -448,7 +450,10 @@ export default function Timesheet() {
               ),
             )}
             entries={group.entries}
-            onEntryClick={isViewingOther ? undefined : setEditingEntry}
+            onEntryClick={isViewingOther ? undefined : (entry) => {
+              if (!isAdmin && entry.status === 'approved') return;
+              setEditingEntry(entry);
+            }}
           />
         ))
       )}
