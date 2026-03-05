@@ -55,6 +55,7 @@ async function fetchProjectsBase(activeOnly: boolean): Promise<Project[]> {
       color: p.color,
       loggedHours: Math.round((loggedMinutes / 60) * 10) / 10,
       budgetHours: p.budget_hours,
+      billable: p.billable ?? true,
       status: p.status,
       team: [],
       organizationId: p.organization_id ?? undefined,
@@ -84,6 +85,7 @@ export async function createProject(
       client: project.client,
       color: project.color,
       budget_hours: project.budgetHours,
+      billable: project.billable,
       status: project.status,
       created_by: user?.id,
       ...(project.organizationId ? { organization_id: project.organizationId } : {}),
@@ -122,6 +124,28 @@ export async function fetchTimeEntries(weekDates: string[], targetUserId?: strin
     duration: minsToDisplay(e.duration_minutes),
     status: e.status,
   }))
+}
+
+export async function fetchWeekRejectionReason(
+  weekStart: string,
+  weekEnd: string,
+  targetUserId?: string
+): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const userId = targetUserId ?? user.id
+
+  const { data } = await supabase
+    .from('approvals')
+    .select('rejection_reason')
+    .eq('user_id', userId)
+    .eq('week_start', weekStart)
+    .eq('week_end', weekEnd)
+    .eq('status', 'rejected')
+    .maybeSingle()
+
+  return data?.rejection_reason ?? null
 }
 
 export async function insertTimeEntry(entry: {
@@ -217,11 +241,18 @@ export async function fetchDashboardStats() {
           .eq('user_id', user.id)
           .in('projects.status', ['active', 'on-hold'])
           .is('projects.deleted_at', null),
-    supabase
-      .from('approvals')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('status', 'pending'),
+    // Admins see total pending submissions from their whole team.
+    // Non-admins see how many of their own timesheets are pending.
+    admin
+      ? supabase
+          .from('approvals')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending')
+      : supabase
+          .from('approvals')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'pending'),
   ])
 
   if (projectCountResult.error) throw new Error(projectCountResult.error.message)
@@ -276,13 +307,35 @@ export async function fetchRecentEntries() {
 
 // ===== REPORTS =====
 
+interface RawReportEntry {
+  id: string
+  user_id: string
+  project_id: string
+  date: string
+  description: string | null
+  start_time: string
+  end_time: string
+  duration_minutes: number
+  status: string
+  projects: {
+    name: string
+    client: string
+    color: string
+    budget_hours: number | null
+    billable: boolean | null
+    status: string
+    billable?: boolean
+  } | null
+  profile?: { full_name: string; initials: string; color: string } | null
+}
+
 export async function fetchReportData(startDate: string, endDate: string, includeAllUsers = false) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
   let query = supabase
     .from('time_entries')
-    .select(`*, projects (name, client, color, budget_hours, status)`)
+    .select(`*, projects (name, client, color, budget_hours, billable, status)`)
     .gte('date', startDate)
     .lte('date', endDate)
     .order('date', { ascending: true })
@@ -320,7 +373,7 @@ export async function fetchReportData(startDate: string, endDate: string, includ
   // For team view: fetch profiles for all unique user_ids in the result
   const profileMap = new Map<string, { full_name: string; initials: string; color: string }>()
   if (includeAllUsers && data && data.length > 0) {
-    const userIds = [...new Set(data.map((e: any) => e.user_id as string))]
+    const userIds = [...new Set((data as RawReportEntry[]).map(e => e.user_id))]
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, full_name, initials, color')
@@ -328,7 +381,7 @@ export async function fetchReportData(startDate: string, endDate: string, includ
     ;(profiles ?? []).forEach(p => profileMap.set(p.id, { full_name: p.full_name, initials: p.initials, color: p.color }))
   }
 
-  return (data ?? []).map((e: any) => ({
+  return ((data ?? []) as RawReportEntry[]).map(e => ({
     ...e,
     profile: profileMap.get(e.user_id) ?? null,
   }))
@@ -404,6 +457,8 @@ export async function fetchApprovals() {
       entryCount: entryList.length,
       submittedDate: new Date(a.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       status: a.status as 'pending' | 'approved' | 'rejected',
+      rejectionReason: a.rejection_reason ?? undefined,
+      resubmitted: a.status === 'pending' && a.reviewed_at != null,
     }
   })
 }
@@ -416,7 +471,6 @@ export async function submitWeekForApproval(weekStart: string, weekEnd: string):
     .from('time_entries')
     .select('duration_minutes')
     .eq('user_id', user.id)
-    .in('status', ['draft', 'rejected'])
     .gte('date', weekStart)
     .lte('date', weekEnd)
 
@@ -433,13 +487,9 @@ export async function submitWeekForApproval(weekStart: string, weekEnd: string):
     .single()
 
   if (existing) {
-    // Do not allow re-submission of an already-approved week
-    if (existing.status === 'approved') {
-      throw new Error('This week has already been approved and cannot be resubmitted.')
-    }
     const { error } = await supabase
       .from('approvals')
-      .update({ status: 'pending', total_hours: totalHours, submitted_at: new Date().toISOString() })
+      .update({ status: 'pending', total_hours: totalHours, submitted_at: new Date().toISOString(), rejection_reason: null })
       .eq('id', existing.id)
     if (error) throw new Error(error.message)
   } else {
@@ -458,7 +508,7 @@ export async function submitWeekForApproval(weekStart: string, weekEnd: string):
     .lte('date', weekEnd)
 }
 
-export async function updateApprovalStatus(id: string, status: 'approved' | 'rejected'): Promise<void> {
+export async function updateApprovalStatus(id: string, status: 'approved' | 'rejected', reason?: string): Promise<void> {
   const { data: approval, error: fetchErr } = await supabase
     .from('approvals')
     .select('user_id, week_start, week_end')
@@ -469,7 +519,11 @@ export async function updateApprovalStatus(id: string, status: 'approved' | 'rej
 
   const { error: approvalErr } = await supabase
     .from('approvals')
-    .update({ status, reviewed_at: new Date().toISOString() })
+    .update({
+      status,
+      reviewed_at: new Date().toISOString(),
+      ...(status === 'rejected' && reason ? { rejection_reason: reason } : { rejection_reason: null }),
+    })
     .eq('id', id)
 
   if (approvalErr) throw new Error(approvalErr.message)
@@ -549,6 +603,7 @@ export async function updateProject(id: string, updates: {
   name: string
   color: string
   budgetHours: number
+  billable: boolean
   status: string
 }): Promise<void> {
   const { error } = await supabase
@@ -557,6 +612,7 @@ export async function updateProject(id: string, updates: {
       name: updates.name,
       color: updates.color,
       budget_hours: updates.budgetHours,
+      billable: updates.billable,
       status: updates.status,
     })
     .eq('id', id)

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { TimeEntry } from '../types'
-import { fetchTimeEntries, insertTimeEntry, updateTimeEntry, deleteTimeEntry } from '../lib/queries'
+import { fetchTimeEntries, fetchWeekRejectionReason, insertTimeEntry, updateTimeEntry, deleteTimeEntry } from '../lib/queries'
 import { fetchActiveProjects } from '../lib/queries'
 import type { Project } from '../types'
 
@@ -14,17 +14,22 @@ export function useTimeEntries({ weekDates, userId }: UseTimeEntriesOptions) {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null)
 
   async function load() {
     try {
       setLoading(true)
       setError(null)
-      const [entriesData, projectsData] = await Promise.all([
+      const weekStart = weekDates[0]
+      const weekEnd = weekDates[weekDates.length - 1]
+      const [entriesData, projectsData, reason] = await Promise.all([
         fetchTimeEntries(weekDates, userId),
         fetchActiveProjects(),
+        fetchWeekRejectionReason(weekStart, weekEnd, userId),
       ])
       setEntries(entriesData)
       setProjects(projectsData)
+      setRejectionReason(reason)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load')
     } finally {
@@ -82,5 +87,5 @@ export function useTimeEntries({ weekDates, userId }: UseTimeEntriesOptions) {
   }
 
 
-  return { entries, projects, loading, error, addEntry, editEntry, removeEntry }
+  return { entries, projects, loading, error, rejectionReason, addEntry, editEntry, removeEntry }
 }

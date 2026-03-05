@@ -23,6 +23,7 @@ interface TimeEntryModalProps {
   }) => Promise<void>;
   onDelete?: () => Promise<void>;
   onClose: () => void;
+  rejectionReason?: string;
 }
 
 function calcMins(start: string, end: string): number {
@@ -49,6 +50,7 @@ export default function TimeEntryModal({
   onSave,
   onDelete,
   onClose,
+  rejectionReason,
 }: TimeEntryModalProps) {
   const today = new Date().toISOString().slice(0, 10);
 
@@ -194,6 +196,22 @@ export default function TimeEntryModal({
             ×
           </button>
         </div>
+
+        {/* Rejection reason — shown when editing a rejected entry */}
+        {mode === 'edit' && entry?.status === 'rejected' && rejectionReason && (
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: '8px',
+            background: '#fde8e8', color: '#9b2020',
+            border: '1px solid #f5c6c6',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            fontSize: '12px',
+            marginBottom: '20px',
+          }}>
+            <span style={{ flexShrink: 0, fontWeight: 700 }}>✗</span>
+            <span><strong style={{ fontWeight: 700 }}>Rejection note: </strong>{rejectionReason}</span>
+          </div>
+        )}
 
         {error && (
           <div

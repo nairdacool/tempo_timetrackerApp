@@ -17,6 +17,7 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
   const [client,  setClient]  = useState('')
   const [budget,  setBudget]  = useState('80')
   const [color,   setColor]   = useState(colorOptions[0])
+  const [billable, setBillable] = useState(true)
   const [orgId,   setOrgId]   = useState('')
   const [orgs,    setOrgs]    = useState<Organization[]>([])
 
@@ -31,7 +32,8 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
       name, client: client || 'Internal',
       color,
       loggedHours: 0,
-      budgetHours: parseInt(budget) || 80,
+      budgetHours: parseInt(budget) || 0,
+      billable,
       status: 'active',
       team: [{ initials: 'JD', color: '#c8602a' }],
       organizationId: orgId || undefined,
@@ -136,6 +138,32 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
               onChange={e => setBudget(e.target.value)}
               style={inputStyle}
             />
+          </div>
+          {/* Billable toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={labelStyle}>Billable</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>
+                {billable ? 'Hours count toward billable totals' : 'Internal / non-billable project'}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBillable(b => !b)}
+              style={{
+                width: 40, height: 22, borderRadius: 11,
+                border: 'none', cursor: 'pointer', position: 'relative',
+                background: billable ? 'var(--accent)' : 'var(--border)',
+                transition: 'background 0.2s', flexShrink: 0,
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: 3,
+                left: billable ? 21 : 3,
+                width: 16, height: 16, borderRadius: '50%',
+                background: 'white', transition: 'left 0.2s',
+              }} />
+            </button>
           </div>
           {orgs.length > 0 && (
             <div>

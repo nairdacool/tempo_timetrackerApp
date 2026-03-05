@@ -1,11 +1,11 @@
 import { useDashboard } from '../hooks/useDashboard'
 import StatCard from '../components/ui/StatCard'
 import TimerWidget from '../components/ui/TimerWidget'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useBreakpoint } from '../hooks/useBreakpoint'
 import TimeEntryModal from '../components/ui/TimeEntryModal'
-import { fetchActiveProjects, updateTimeEntry, deleteTimeEntry } from '../lib/queries'
-import type { Project, TimeEntry } from '../types'
+import { updateTimeEntry, deleteTimeEntry } from '../lib/queries'
+import type { TimeEntry } from '../types'
 import { useAuth } from '../context/useAuth'
 
 interface DashboardProps {
@@ -19,11 +19,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'Admin'
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
-  const [dashProjects, setDashProjects] = useState<Project[]>([])
-
-  useEffect(() => {
-    fetchActiveProjects().then(setDashProjects).catch(() => {})
-  }, [])
 
   if (loading) return (
     <div style={{
@@ -52,6 +47,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   )
 
   const d = data!
+
+  const statusStyles = {
+    approved: { bg: 'var(--green-light)', color: 'var(--green)',      label: '✓ Approved' },
+    pending:  { bg: 'var(--amber-light)', color: 'var(--amber)',      label: '⏳ Pending'  },
+    draft:    { bg: 'var(--bg-subtle)',   color: 'var(--text-muted)', label: '◌ Draft'    },
+    rejected: { bg: '#fde8e8',            color: '#c03030',           label: '✗ Rejected' },
+  }
 
   return (
     <div>
@@ -153,12 +155,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             // Mobile: card list instead of table
             <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {d.recentEntries.map(entry => {
-                const statusStyles = {
-                  approved: { bg: 'var(--green-light)', color: 'var(--green)',      label: '✓ Approved' },
-                  pending:  { bg: 'var(--amber-light)', color: 'var(--amber)',      label: '⏳ Pending'  },
-                  draft:    { bg: 'var(--bg-subtle)',   color: 'var(--text-muted)', label: '◌ Draft'    },
-                  rejected: { bg: '#fde8e8',            color: '#c03030',           label: '✗ Rejected' },
-                }
                 const s = statusStyles[entry.status as keyof typeof statusStyles]
                   ?? { bg: 'var(--bg-subtle)', color: 'var(--text-muted)', label: entry.status }
                 const handleEntryClick = () => {
@@ -235,12 +231,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               </thead>
               <tbody>
                 {d.recentEntries.map(entry => {
-                  const statusStyles = {
-                    approved: { bg: 'var(--green-light)', color: 'var(--green)',      label: '✓ Approved' },
-                    pending:  { bg: 'var(--amber-light)', color: 'var(--amber)',      label: '⏳ Pending'  },
-                    draft:    { bg: 'var(--bg-subtle)',   color: 'var(--text-muted)', label: '◌ Draft'    },
-                    rejected: { bg: '#fde8e8',            color: '#c03030',           label: '✗ Rejected' },
-                  }
                   const s = statusStyles[entry.status as keyof typeof statusStyles]
                     ?? { bg: 'var(--bg-subtle)', color: 'var(--text-muted)', label: entry.status }
                   return (
@@ -392,7 +382,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       {editingEntry && (
         <TimeEntryModal
           mode="edit"
-          projects={dashProjects}
+          projects={d.projects}
           entry={editingEntry}
           onSave={async (data) => {
             await updateTimeEntry(editingEntry.id, data)

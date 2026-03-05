@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import { fetchDashboardStats, fetchRecentEntries } from '../lib/queries'
+import { useState, useEffect, useCallback } from 'react'
+import { fetchDashboardStats, fetchRecentEntries, fetchActiveProjects } from '../lib/queries'
+import type { Project } from '../types'
 
 interface DayBar {
   label: string
@@ -28,6 +29,7 @@ interface DashboardData {
   pendingCount: number
   weekBars: DayBar[]
   recentEntries: RecentEntry[]
+  projects: Project[]
 }
 
 export function useDashboard(refreshKey = 0) {
@@ -35,14 +37,15 @@ export function useDashboard(refreshKey = 0) {
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState<string | null>(null)
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const [stats, recent] = await Promise.all([
+      const [stats, recent, projects] = await Promise.all([
         fetchDashboardStats(),
         fetchRecentEntries(),
+        fetchActiveProjects(),
       ])
 
       const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -66,18 +69,18 @@ export function useDashboard(refreshKey = 0) {
         pendingCount:  stats.pendingCount,
         weekBars,
         recentEntries: recent,
+        projects,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load dashboard')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshKey])
+  }, [load, refreshKey])
 
   return { data, loading, error }
 }

@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { useApprovals } from '../hooks/useApprovals'
 import ApprovalCard from '../components/ui/ApprovalCard'
+import ApprovalDetailModal from '../components/ui/ApprovalDetailModal'
+import type { Approval } from '../types'
 
 type FilterTab = 'pending' | 'approved' | 'rejected' | 'all'
 
 export default function Approvals() {
   const { approvals, loading, error, changeStatus, approveAll } = useApprovals()
   const [activeTab, setActiveTab] = useState<FilterTab>('pending')
+  const [viewingApproval, setViewingApproval] = useState<Approval | null>(null)
 
   const counts = {
     pending:  approvals.filter(a => a.status === 'pending').length,
@@ -125,9 +128,17 @@ export default function Approvals() {
           <ApprovalCard
             key={approval.id}
             approval={approval}
-            onStatusChange={(id, status) => changeStatus(id as string, status as 'approved' | 'rejected')}
+            onStatusChange={(id, status, reason) => changeStatus(id, status, reason)}
+            onView={setViewingApproval}
           />
         ))
+      )}
+
+      {viewingApproval && (
+        <ApprovalDetailModal
+          approval={viewingApproval}
+          onClose={() => setViewingApproval(null)}
+        />
       )}
     </div>
   )

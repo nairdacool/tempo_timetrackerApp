@@ -11,10 +11,11 @@ interface DayGroupProps {
   label: string      // e.g. 'Monday, Feb 23'
   totalHours: string // e.g. '4.5h'
   entries: TimeEntry[]
-  onEntryClick?: (entry: TimeEntry) => void 
+  onEntryClick?: (entry: TimeEntry) => void
+  rejectionReason?: string // shown as tooltip on rejected badges
 }
 
-export default function DayGroup({ label, totalHours, entries, onEntryClick }: DayGroupProps) {
+export default function DayGroup({ label, totalHours, entries, onEntryClick, rejectionReason }: DayGroupProps) {
   return (
     <div style={{ marginBottom: '16px' }}>
       {/* Day header */}
@@ -83,14 +84,21 @@ export default function DayGroup({ label, totalHours, entries, onEntryClick }: D
             </div>
 
             {/* Status badge */}
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: '4px',
-              padding: '3px 9px', borderRadius: '20px',
-              fontSize: '11.5px', fontWeight: 600,
-              background: s.background, color: s.color,
-              flexShrink: 0,
-            }}>
+            <span
+              title={entry.status === 'rejected' && rejectionReason ? `Rejected: ${rejectionReason}` : undefined}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                padding: '3px 9px', borderRadius: '20px',
+                fontSize: '11.5px', fontWeight: 600,
+                background: s.background, color: s.color,
+                flexShrink: 0,
+                cursor: entry.status === 'rejected' && rejectionReason ? 'help' : undefined,
+              }}
+            >
               {s.label}
+              {entry.status === 'rejected' && rejectionReason && (
+                <span style={{ fontSize: '10px', opacity: 0.75 }}>ℹ</span>
+              )}
             </span>
 
             {/* Time meta */}

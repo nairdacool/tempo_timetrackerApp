@@ -3,7 +3,8 @@ import type { Approval, ApprovalStatus } from "../../types";
 
 interface ApprovalCardProps {
   approval: Approval;
-  onStatusChange: (id: string, status: ApprovalStatus) => void;
+  onStatusChange: (id: string, status: ApprovalStatus, reason?: string) => void;
+  onView: (approval: Approval) => void;
 }
 
 const statusStyles: Record<
@@ -15,18 +16,33 @@ const statusStyles: Record<
   rejected: { border: "#e05050",      badge: "#fde8e8",            badgeText: "#c03030",        label: "✗ Rejected" },
 };
 
-export default function ApprovalCard({ approval, onStatusChange }: ApprovalCardProps) {
+export default function ApprovalCard({ approval, onStatusChange, onView }: ApprovalCardProps) {
   const [confirming, setConfirming] = useState<"approve" | "reject" | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const s = statusStyles[approval.status];
   const isDone = approval.status !== "pending";
 
   function handleAction(action: "approve" | "reject") {
-    if (confirming === action) {
-      onStatusChange(approval.id, action === "approve" ? "approved" : "rejected");
-      setConfirming(null);
-    } else {
-      setConfirming(action);
+    if (action === "approve") {
+      if (confirming === "approve") {
+        onStatusChange(approval.id, "approved");
+        setConfirming(null);
+      } else {
+        setConfirming("approve");
+        setRejectReason("");
+      }
+      return;
     }
+    // reject always goes into reason-entry mode first
+    if (confirming !== "reject") {
+      setConfirming("reject");
+    }
+  }
+
+  function handleConfirmReject() {
+    onStatusChange(approval.id, "rejected", rejectReason.trim() || undefined);
+    setConfirming(null);
+    setRejectReason("");
   }
 
   return (
@@ -109,10 +125,47 @@ export default function ApprovalCard({ approval, onStatusChange }: ApprovalCardP
         {s.label}
       </span>
 
+      {/* Resubmitted indicator */}
+      {approval.resubmitted && (
+        <span
+          title="This timesheet was previously rejected and has been resubmitted"
+          style={{
+            display: "inline-flex", alignItems: "center",
+            padding: "4px 9px", borderRadius: "20px",
+            fontSize: "11px", fontWeight: 600,
+            background: "var(--bg-subtle)", color: "var(--text-muted)",
+            flexShrink: 0, cursor: "help",
+          }}
+        >
+          ↩ Resubmitted
+        </span>
+      )}
+
       {/* Actions */}
       <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
         {approval.status === "pending" ? (
           <>
+            <button
+              onClick={() => onView(approval)}
+              style={{
+                padding: "7px 14px", borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: "transparent", color: "var(--text-muted)",
+                fontFamily: "var(--font-body)",
+                fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-subtle)'
+                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+              }}
+            >
+              View
+            </button>
             <button
               onClick={() => handleAction("approve")}
               style={{
@@ -127,21 +180,52 @@ export default function ApprovalCard({ approval, onStatusChange }: ApprovalCardP
             >
               {confirming === "approve" ? "Confirm ✓" : "✓ Approve"}
             </button>
-            <button
-              onClick={() => handleAction("reject")}
-              style={{
-                padding: "7px 14px", borderRadius: "8px",
-                border: "1px solid transparent",
-                fontFamily: "var(--font-body)",
-                fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                transition: "all 0.15s",
-                background: confirming === "reject" ? "#e05050" : "#fde8e8",
-                color:      confirming === "reject" ? "white"   : "#c03030",
-              }}
-            >
-              {confirming === "reject" ? "Confirm ✗" : "✗ Reject"}
-            </button>
-            {confirming && (
+            {confirming !== "reject" ? (
+              <button
+                onClick={() => handleAction("reject")}
+                style={{
+                  padding: "7px 14px", borderRadius: "8px",
+                  border: "1px solid transparent",
+                  fontFamily: "var(--font-body)",
+                  fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                  transition: "all 0.15s",
+                  background: "#fde8e8",
+                  color:      "#c03030",
+                }}
+              >
+                ✗ Reject
+              </button>
+            ) : (
+              /* Inline rejection reason row */
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                <input
+                  autoFocus
+                  placeholder="Reason (optional)"
+                  value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleConfirmReject(); if (e.key === 'Escape') { setConfirming(null); setRejectReason(''); } }}
+                  style={{
+                    padding: "6px 10px", borderRadius: "7px",
+                    border: "1px solid #e05050",
+                    background: "var(--bg)", color: "var(--text)",
+                    fontFamily: "var(--font-body)", fontSize: "12px",
+                    outline: "none", width: "180px",
+                  }}
+                />
+                <button
+                  onClick={handleConfirmReject}
+                  style={{
+                    padding: "6px 12px", borderRadius: "7px",
+                    border: "none", background: "#e05050", color: "white",
+                    fontFamily: "var(--font-body)", fontSize: "12px",
+                    fontWeight: 600, cursor: "pointer",
+                  }}
+                >
+                  Confirm ✗
+                </button>
+              </div>
+            )}
+            {confirming && confirming !== "reject" && (
               <button
                 onClick={() => setConfirming(null)}
                 style={{
@@ -157,15 +241,43 @@ export default function ApprovalCard({ approval, onStatusChange }: ApprovalCardP
             )}
           </>
         ) : (
-          <button style={{
-            padding: "7px 14px", borderRadius: "8px",
-            border: "1px solid var(--border)",
-            background: "transparent", color: "var(--text-muted)",
-            fontFamily: "var(--font-body)",
-            fontSize: "12px", fontWeight: 600, cursor: "pointer",
-          }}>
-            View
-          </button>
+          <>
+            {/* Rejection reason pill on resolved cards */}
+            {approval.status === "rejected" && approval.rejectionReason && (
+              <span style={{
+                fontSize: "12px", color: "#c03030",
+                background: "#fde8e8", borderRadius: "8px",
+                padding: "4px 10px", maxWidth: "220px",
+                whiteSpace: "nowrap", overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+                title={approval.rejectionReason}
+              >
+                “{approval.rejectionReason}”
+              </span>
+            )}
+            <button
+              onClick={() => onView(approval)}
+              style={{
+                padding: "7px 14px", borderRadius: "8px",
+                border: "1px solid var(--border)",
+                background: "transparent", color: "var(--text-muted)",
+                fontFamily: "var(--font-body)",
+                fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-subtle)'
+                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+                ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+              }}
+            >
+              View
+            </button>
+          </>
         )}
       </div>
     </div>

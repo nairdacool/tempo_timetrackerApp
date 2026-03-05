@@ -25,13 +25,13 @@ export function useApprovals() {
     load()
   }, [])
 
-  async function changeStatus(id: string, status: 'approved' | 'rejected') {
-    // Optimistic update — update UI immediately
+  async function changeStatus(id: string, status: 'approved' | 'rejected', reason?: string) {
+    // Optimistic update
     setApprovals(prev =>
-      prev.map(a => a.id === id ? { ...a, status: status as ApprovalStatus } : a)
+      prev.map(a => a.id === id ? { ...a, status: status as ApprovalStatus, rejectionReason: status === 'rejected' ? reason : undefined } : a)
     )
     try {
-      await updateApprovalStatus(id, status)
+      await updateApprovalStatus(id, status, reason)
       toast.success(status === 'approved' ? '✓ Timesheet approved' : 'Timesheet rejected')
     } catch (err) {
       toast.error('Failed to update approval')

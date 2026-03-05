@@ -118,6 +118,7 @@ export default function Timesheet() {
     projects,
     loading,
     error,
+    rejectionReason,
     addEntry,
     editEntry,
     removeEntry,
@@ -454,6 +455,7 @@ export default function Timesheet() {
               if (!isAdmin && entry.status === 'approved') return;
               setEditingEntry(entry);
             }}
+            rejectionReason={rejectionReason ?? undefined}
           />
         ))
       )}
@@ -465,6 +467,7 @@ export default function Timesheet() {
           onSave={handleEditSave}
           onDelete={handleDelete}
           onClose={() => setEditingEntry(null)}
+          rejectionReason={editingEntry.status === 'rejected' ? (rejectionReason ?? undefined) : undefined}
         />
       )}
     </div>
