@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import type { ReportPeriod, WeekBar, ProjectSummary } from '../types'
+import type { ReportPeriod, WeekBar, ProjectSummary, MemberSummary, DetailEntry } from '../types'
 import { fetchReportData } from '../lib/queries'
 
 interface ReportsData {
-  bars:        WeekBar[]
-  summaries:   ProjectSummary[]
-  periodLabel: string
+  bars:            WeekBar[]
+  summaries:       ProjectSummary[]
+  memberSummaries: MemberSummary[]
+  detailEntries:   DetailEntry[]
+  periodLabel:     string
 }
 
 function getPeriodDates(period: ReportPeriod, customFrom?: string, customTo?: string) {
@@ -107,7 +109,47 @@ function buildProjectSummaries(entries: any[]): ProjectSummary[] {
   return Array.from(map.values()).sort((a, b) => b.hours - a.hours)
 }
 
-export function useReports(period: ReportPeriod, customFrom: string, customTo: string) {
+function buildMemberSummaries(entries: any[]): MemberSummary[] {
+  const map = new Map<string, { name: string; initials: string; color: string; hours: number; projects: Set<string> }>()
+
+  for (const e of entries) {
+    if (!map.has(e.user_id)) {
+      map.set(e.user_id, {
+        name:     e.profile?.full_name ?? 'Unknown',
+        initials: e.profile?.initials  ?? '?',
+        color:    e.profile?.color     ?? '#c8602a',
+        hours:    0,
+        projects: new Set(),
+      })
+    }
+    const m = map.get(e.user_id)!
+    m.hours = Math.round((m.hours * 60 + e.duration_minutes) / 60 * 10) / 10
+    if (e.project_id) m.projects.add(e.project_id)
+  }
+
+  return Array.from(map.entries())
+    .map(([memberId, m]) => ({
+      memberId,
+      name:         m.name,
+      initials:     m.initials,
+      color:        m.color,
+      hours:        m.hours,
+      projectCount: m.projects.size,
+    }))
+    .sort((a, b) => b.hours - a.hours)
+}
+
+function buildDetailEntries(entries: any[]): DetailEntry[] {
+  return entries.map(e => ({
+    date:        e.date,
+    member:      e.profile?.full_name ?? 'Me',
+    project:     e.projects?.name     ?? 'Unknown',
+    description: e.description        ?? '',
+    hours:       Math.round((e.duration_minutes / 60) * 100) / 100,
+  }))
+}
+
+export function useReports(period: ReportPeriod, customFrom: string, customTo: string, isAdmin = false) {
   const [data,    setData]    = useState<ReportsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState<string | null>(null)
@@ -127,12 +169,14 @@ export function useReports(period: ReportPeriod, customFrom: string, customTo: s
         setError(null)
 
         const { start, end, label } = getPeriodDates(period, customFrom, customTo)
-        const entries = await fetchReportData(start, end)
+        const entries = await fetchReportData(start, end, isAdmin)
 
         setData({
-          bars:        buildWeekBars(entries, start, end),
-          summaries:   buildProjectSummaries(entries),
-          periodLabel: label,
+          bars:            buildWeekBars(entries, start, end),
+          summaries:       buildProjectSummaries(entries),
+          memberSummaries: buildMemberSummaries(entries),
+          detailEntries:   buildDetailEntries(entries),
+          periodLabel:     label,
         })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load report')
@@ -142,7 +186,7 @@ export function useReports(period: ReportPeriod, customFrom: string, customTo: s
     }
 
     load()
-  }, [period, customFrom, customTo]) // Re-run when period or custom dates change, or on auth load
+  }, [period, customFrom, customTo, isAdmin])
 
   return { data, loading, error }
 }

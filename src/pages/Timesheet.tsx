@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTimeEntries } from "../hooks/useTimeEntries";
 import WeekNavigator from "../components/ui/WeekNavigator";
 import EntryForm from "../components/ui/EntryForm";
@@ -8,7 +8,9 @@ import type { TimeEntry } from "../types";
 import TimeEntryModal from "../components/ui/TimeEntryModal";
 import toast from "react-hot-toast";
 import { downloadCsv } from "../lib/exportCsv";
-import { useBreakpoint } from '../hooks/useBreakpoint'
+import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useAuth } from '../context/useAuth';
+import { supabase } from '../lib/supabase';
 
 // Generates a week object starting from a Monday date
 function getWeekDates(monday: Date) {
@@ -61,13 +63,56 @@ function minsToLabel(mins: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+interface TeamMember { id: string; name: string; initials: string; color: string }
+
 export default function Timesheet() {
   const [weekOffset, setWeekOffset] = useState(0);
   const currentMonday = new Date(todayMonday);
   currentMonday.setDate(todayMonday.getDate() + weekOffset * 7);
   const currentWeek = getWeekDates(currentMonday);
-  const { isMobile: _isMobile } = useBreakpoint()
+  const { isMobile: _isMobile } = useBreakpoint();
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'Admin';
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [viewingUserId, setViewingUserId] = useState<string | undefined>(undefined);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const viewingMember = viewingUserId
+    ? teamMembers.find(m => m.id === viewingUserId)
+    : null;
+  const isViewingOther = !!viewingUserId;
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    supabase
+      .from('profiles')
+      .select('id, full_name, initials, color')
+      .neq('id', (profile as { id: string }).id)
+      .eq('is_active', true)
+      .order('full_name')
+      .then(({ data }) => {
+        setTeamMembers((data ?? []).map(m => ({
+          id: m.id,
+          name: m.full_name,
+          initials: m.initials,
+          color: m.color,
+        })));
+      });
+  }, [isAdmin, profile?.id]);
+
   const {
     entries,
     projects,
@@ -78,6 +123,7 @@ export default function Timesheet() {
     removeEntry,
   } = useTimeEntries({
     weekDates: currentWeek.dates,
+    userId: viewingUserId,
   });
 
   const grouped = currentWeek.dates
@@ -170,6 +216,118 @@ export default function Timesheet() {
 
   return (
     <div>
+      {/* Admin member picker — searchable dropdown */}
+      {isAdmin && teamMembers.length > 0 && (
+        <div ref={dropdownRef} style={{ position: 'relative', marginBottom: 16, display: 'inline-block', minWidth: 220 }}>
+          <button
+            onClick={() => { setDropdownOpen(o => !o); setSearch(''); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '7px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              border: '1px solid var(--border)', cursor: 'pointer',
+              background: 'var(--bg-card)', color: 'var(--text)',
+              width: '100%', textAlign: 'left',
+            }}
+          >
+            {isViewingOther && viewingMember ? (
+              <>
+                <div style={{
+                  width: 20, height: 20, borderRadius: '50%', background: viewingMember.color,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0,
+                }}>{viewingMember.initials}</div>
+                {viewingMember.name}
+              </>
+            ) : (
+              <>
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                My Timesheet
+              </>
+            )}
+            <svg style={{ marginLeft: 'auto', opacity: 0.5 }} width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          </button>
+
+          {dropdownOpen && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 200,
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              borderRadius: 10, minWidth: 240, boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+              overflow: 'hidden',
+            }}>
+              <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
+                <input
+                  autoFocus
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search members…"
+                  style={{
+                    width: '100%', padding: '6px 10px', borderRadius: 6, fontSize: 13,
+                    border: '1px solid var(--border)', background: 'var(--bg)',
+                    color: 'var(--text)', outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                {/* My Timesheet option */}
+                <div
+                  onClick={() => { setViewingUserId(undefined); setDropdownOpen(false); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '9px 14px', cursor: 'pointer', fontSize: 13,
+                    background: !isViewingOther ? 'rgba(255,255,255,0.05)' : 'transparent',
+                    fontWeight: !isViewingOther ? 700 : 400,
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = !isViewingOther ? 'rgba(255,255,255,0.05)' : 'transparent')}
+                >
+                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  My Timesheet
+                </div>
+                {teamMembers
+                  .filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
+                  .map(m => (
+                    <div
+                      key={m.id}
+                      onClick={() => { setViewingUserId(m.id); setDropdownOpen(false); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '9px 14px', cursor: 'pointer', fontSize: 13,
+                        background: viewingUserId === m.id ? 'rgba(255,255,255,0.05)' : 'transparent',
+                        fontWeight: viewingUserId === m.id ? 700 : 400,
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.07)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = viewingUserId === m.id ? 'rgba(255,255,255,0.05)' : 'transparent')}
+                    >
+                      <div style={{
+                        width: 24, height: 24, borderRadius: '50%', background: m.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0,
+                      }}>{m.initials}</div>
+                      {m.name}
+                    </div>
+                  ))}
+                {teamMembers.filter(m => m.name.toLowerCase().includes(search.toLowerCase())).length === 0 && (
+                  <div style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text-muted)' }}>No members found</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {isViewingOther && viewingMember && (
+        <div style={{
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          borderRadius: 10, padding: '10px 16px', marginBottom: 16,
+          fontSize: 13, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <div style={{
+            width: 24, height: 24, borderRadius: '50%', background: viewingMember.color,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 10, fontWeight: 700, color: '#fff',
+          }}>{viewingMember.initials}</div>
+          Viewing <strong style={{ color: 'var(--text)' }}>{viewingMember.name}</strong>'s timesheet — read-only
+        </div>
+      )}
       <WeekNavigator
         weekLabel={currentWeek.label}
         totalHours={totalHours || "0h"}
@@ -234,7 +392,7 @@ export default function Timesheet() {
         </div>
       )}
 
-      {projects.length > 0 && (
+      {projects.length > 0 && !isViewingOther && (
         <EntryForm projects={projects} onAdd={handleAddEntry} />
       )}
 
@@ -290,7 +448,7 @@ export default function Timesheet() {
               ),
             )}
             entries={group.entries}
-            onEntryClick={setEditingEntry}
+            onEntryClick={isViewingOther ? undefined : setEditingEntry}
           />
         ))
       )}

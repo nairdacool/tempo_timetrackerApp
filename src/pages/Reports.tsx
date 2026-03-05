@@ -6,17 +6,22 @@ import HoursChart from "../components/ui/HoursChart";
 import ProjectBreakdownTable from "../components/ui/ProjectBreakdownTable";
 import { downloadCsv } from "../lib/exportCsv";
 import toast from "react-hot-toast";
+import { useAuth } from "../context/useAuth";
 
 export default function Reports() {
   const [period, setPeriod] = useState<ReportPeriod>("this-month");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [activeTab, setActiveTab] = useState<'project' | 'member'>('project');
 
   // Only pass dates to hook when Apply is clicked
   const [appliedFrom, setAppliedFrom] = useState("");
   const [appliedTo, setAppliedTo] = useState("");
 
-  const { data, loading, error } = useReports(period, appliedFrom, appliedTo);
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'Admin';
+
+  const { data, loading, error } = useReports(period, appliedFrom, appliedTo, isAdmin);
 
   const totalHours = data?.summaries.reduce((s, p) => s + p.hours, 0) ?? 0;
   const billableHours =
@@ -55,6 +60,25 @@ export default function Reports() {
       rows,
     );
     toast.success("Report exported!");
+  }
+
+  function handleExportDetail() {
+    if (!data || data.detailEntries.length === 0) {
+      toast.error("No entries to export");
+      return;
+    }
+    const rows = data.detailEntries.map((e) => ({
+      Date: e.date,
+      Member: e.member,
+      Project: e.project,
+      Description: e.description,
+      Hours: e.hours,
+    }));
+    downloadCsv(
+      `detail_${data.periodLabel.replace(/[^a-z0-9]/gi, "_")}.csv`,
+      rows,
+    );
+    toast.success("Detail report exported!");
   }
 
   return (
@@ -160,6 +184,7 @@ export default function Reports() {
 
         <div style={{ flex: 1 }} />
         <button style={exportBtnStyle}>Export PDF</button>
+        <button onClick={handleExportDetail} style={exportBtnStyle}>Export Detail</button>
         <button onClick={handleExportCsv} style={exportBtnStyle}>Export CSV</button>
       </div>
 
@@ -326,8 +351,84 @@ export default function Reports() {
             </div>
           ) : (
             <>
+              {/* Tab bar — admin only */}
+              {isAdmin && (
+                <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
+                  {(['project', 'member'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      style={{
+                        padding: '8px 18px', fontSize: 13, fontWeight: 600,
+                        border: 'none', background: 'transparent', cursor: 'pointer',
+                        color: activeTab === tab ? 'var(--accent)' : 'var(--text-muted)',
+                        borderBottom: activeTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
+                        marginBottom: -1,
+                      }}
+                    >
+                      {tab === 'project' ? 'By Project' : 'By Member'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <HoursChart bars={data.bars} periodLabel={data.periodLabel} />
-              <ProjectBreakdownTable summaries={data.summaries} />
+
+              {activeTab === 'project' || !isAdmin ? (
+                <ProjectBreakdownTable summaries={data.summaries} />
+              ) : (
+                /* By Member table */
+                <div style={{
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: 12, overflow: 'hidden',
+                }}>
+                  <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Hours by Member</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {data.memberSummaries.length} member{data.memberSummaries.length !== 1 ? 's' : ''} · {data.summaries.reduce((s, p) => s + p.hours, 0)}h total
+                    </div>
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-subtle)' }}>
+                        {['Member', 'Projects', 'Hours', 'Share'].map(col => (
+                          <th key={col} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.memberSummaries.map((m, i) => {
+                        const totalHrs = data.memberSummaries.reduce((s, x) => s + x.hours, 0);
+                        const share = totalHrs > 0 ? Math.round((m.hours / totalHrs) * 100) : 0;
+                        return (
+                          <tr key={m.memberId} style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                            <td style={{ padding: '12px 16px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{
+                                  width: 28, height: 28, borderRadius: '50%', background: m.color,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0,
+                                }}>{m.initials}</div>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{m.name}</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--text-muted)' }}>{m.projectCount}</td>
+                            <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{m.hours}h</td>
+                            <td style={{ padding: '12px 16px', minWidth: 140 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                                  <div style={{ width: `${share}%`, height: '100%', background: m.color, borderRadius: 3 }} />
+                                </div>
+                                <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 32 }}>{share}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           )}
         </>

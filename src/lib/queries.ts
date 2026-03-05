@@ -124,14 +124,16 @@ export async function createProject(
 
 // ===== TIME ENTRIES =====
 
-export async function fetchTimeEntries(weekDates: string[]): Promise<TimeEntry[]> {
+export async function fetchTimeEntries(weekDates: string[], targetUserId?: string): Promise<TimeEntry[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
+
+  const userId = targetUserId ?? user.id
 
   const { data, error } = await supabase
     .from('time_entries')
     .select(`*, projects (name, color)`)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .in('date', weekDates)
     .order('date', { ascending: false })
     .order('start_time', { ascending: true })
@@ -264,20 +266,39 @@ export async function fetchRecentEntries() {
 
 // ===== REPORTS =====
 
-export async function fetchReportData(startDate: string, endDate: string) {
+export async function fetchReportData(startDate: string, endDate: string, includeAllUsers = false) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('time_entries')
     .select(`*, projects (name, client, color, budget_hours, status)`)
-    .eq('user_id', user.id)
     .gte('date', startDate)
     .lte('date', endDate)
     .order('date', { ascending: true })
 
+  if (!includeAllUsers) {
+    query = query.eq('user_id', user.id)
+  }
+
+  const { data, error } = await query
   if (error) throw new Error(error.message)
-  return data ?? []
+
+  // For team view: fetch profiles for all unique user_ids in the result
+  const profileMap = new Map<string, { full_name: string; initials: string; color: string }>()
+  if (includeAllUsers && data && data.length > 0) {
+    const userIds = [...new Set(data.map((e: any) => e.user_id as string))]
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, initials, color')
+      .in('id', userIds)
+    ;(profiles ?? []).forEach(p => profileMap.set(p.id, { full_name: p.full_name, initials: p.initials, color: p.color }))
+  }
+
+  return (data ?? []).map((e: any) => ({
+    ...e,
+    profile: profileMap.get(e.user_id) ?? null,
+  }))
 }
 
 // ===== APPROVALS =====
