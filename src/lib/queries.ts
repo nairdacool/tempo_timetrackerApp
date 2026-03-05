@@ -217,11 +217,18 @@ export async function fetchDashboardStats() {
           .eq('user_id', user.id)
           .in('projects.status', ['active', 'on-hold'])
           .is('projects.deleted_at', null),
-    supabase
-      .from('approvals')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('status', 'pending'),
+    // Admins see total pending submissions from their whole team.
+    // Non-admins see how many of their own timesheets are pending.
+    admin
+      ? supabase
+          .from('approvals')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending')
+      : supabase
+          .from('approvals')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'pending'),
   ])
 
   if (projectCountResult.error) throw new Error(projectCountResult.error.message)
