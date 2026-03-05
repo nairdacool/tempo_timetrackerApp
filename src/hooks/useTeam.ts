@@ -25,10 +25,68 @@ export function useTeam() {
             setLoading(true)
             setError(null)
 
-            const { data, error } = await supabase
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('Not authenticated')
+
+            // Determine if current user is admin
+            const { data: selfProfile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single()
+            const currentUserIsAdmin = selfProfile?.role === 'Admin'
+
+            let profileIds: string[] | null = null
+
+            if (currentUserIsAdmin) {
+                // Get IDs of projects this admin owns
+                const { data: ownedProjects } = await supabase
+                    .from('projects')
+                    .select('id')
+                    .eq('created_by', user.id)
+                    .is('deleted_at', null)
+
+                const projectIds = (ownedProjects ?? []).map(p => p.id)
+
+                // Get member IDs from those projects
+                const memberIdSet = new Set<string>([user.id])
+
+                if (projectIds.length > 0) {
+                    const { data: projectMembers } = await supabase
+                        .from('project_members')
+                        .select('user_id')
+                        .in('project_id', projectIds)
+                    ;(projectMembers ?? []).forEach(m => memberIdSet.add(m.user_id))
+                }
+
+                // Also include profiles in orgs owned by this admin
+                const { data: ownedOrgs } = await supabase
+                    .from('organizations')
+                    .select('id')
+                    .eq('created_by', user.id)
+                const orgIds = (ownedOrgs ?? []).map(o => o.id)
+
+                if (orgIds.length > 0) {
+                    const { data: orgProfiles } = await supabase
+                        .from('profiles')
+                        .select('id')
+                        .in('organization_id', orgIds)
+                    ;(orgProfiles ?? []).forEach(p => memberIdSet.add(p.id))
+                }
+
+                profileIds = Array.from(memberIdSet)
+            }
+
+            let query = supabase
                 .from('profiles')
                 .select('*')
                 .order('full_name', { ascending: true })
+
+            if (profileIds !== null) {
+                query = query.in('id', profileIds)
+            }
+
+            const { data, error } = await query
 
             if (error) throw new Error(error.message)
 
@@ -62,15 +120,12 @@ export function useTeam() {
                 const monthMins = (monthRes.data ?? []).reduce((s, e) => s + e.duration_minutes, 0)
                 let projectCount = (projectRes.data ?? []).length
 
-                // Admins should see the total number of projects in the workspace,
-                // not just the ones they are explicitly a member of. The dashboard
-                // already calculates counts for the current user, so we need to
-                // fetch the overall project count here when the profile is an
-                // admin role. Exclude deleted and archived projects.
+                // Admins see a count of projects they own, not all projects
                 if (profile.role === 'Admin') {
                     const { count: adminCount, error: countErr } = await supabase
                         .from('projects')
                         .select('id', { count: 'exact', head: true })
+                        .eq('created_by', profile.id)
                         .is('deleted_at', null)
                         .neq('status', 'archived')
                     if (!countErr) {

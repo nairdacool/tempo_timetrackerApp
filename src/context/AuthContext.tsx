@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadProfile(userId: string) {
+  async function loadProfile(userId: string, fallbackOrg?: string) {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       initials:     data.initials,
       role:         data.role,
       color:        data.color,
-      organization: data.organization,
+      organization: data.organization || fallbackOrg || 'Tempo',
     } as UserProfile;
   }
 
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
 
-          const p = await loadProfile(session.user.id);
+          const p = await loadProfile(session.user.id, session.user.user_metadata?.organization);
           if (mounted) setProfile(p);
         }, 0);
       }

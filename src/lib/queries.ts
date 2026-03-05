@@ -18,6 +18,7 @@ async function isAdmin(): Promise<boolean> {
 // ===== PROJECTS =====
 
 export async function fetchActiveProjects(): Promise<Project[]> {
+  const { data: { user } } = await supabase.auth.getUser()
   const admin = await isAdmin()
 
   let query = supabase
@@ -27,8 +28,9 @@ export async function fetchActiveProjects(): Promise<Project[]> {
     .is('deleted_at', null)  
     .order('created_at', { ascending: false })
 
-  if (!admin) {
-    const { data: { user } } = await supabase.auth.getUser()
+  if (admin) {
+    query = query.eq('created_by', user!.id)
+  } else {
     const { data: memberships } = await supabase
       .from('project_members')
       .select('project_id')
@@ -59,6 +61,7 @@ export async function fetchActiveProjects(): Promise<Project[]> {
 }
 
 export async function fetchProjects(): Promise<Project[]> {
+  const { data: { user } } = await supabase.auth.getUser()
   const admin = await isAdmin()
 
   let query = supabase
@@ -67,8 +70,9 @@ export async function fetchProjects(): Promise<Project[]> {
     .is('deleted_at', null)  
     .order('created_at', { ascending: false })
 
-  if (!admin) {
-    const { data: { user } } = await supabase.auth.getUser()
+  if (admin) {
+    query = query.eq('created_by', user!.id)
+  } else {
     const { data: memberships } = await supabase
       .from('project_members')
       .select('project_id')
@@ -517,9 +521,11 @@ export async function fetchEntriesForApproval(userId: string, weekStart: string,
 // ===== ORGANIZATIONS =====
 
 export async function fetchOrganizations(): Promise<Organization[]> {
+  const { data: { user } } = await supabase.auth.getUser()
   const { data: orgs, error } = await supabase
     .from('organizations')
     .select('*')
+    .eq('created_by', user!.id)
     .order('created_at', { ascending: true })
 
   if (error) throw new Error(error.message)
