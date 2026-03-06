@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-type AuthMode = 'login' | 'signup'
+type AuthMode = 'login' | 'signup' | 'forgot'
 
 export default function Login() {
   const [mode,         setMode]         = useState<AuthMode>('login')
@@ -41,7 +41,21 @@ export default function Login() {
       .slice(0, 2).join('')
   }
 
+  async function handleForgotPassword() {
+    if (!email.trim()) { setError('Enter your email address first.'); return }
+    setLoading(true)
+    setError(null)
+    setSuccess(null)
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/settings`,
+    })
+    setLoading(false)
+    if (error) setError(error.message)
+    else setSuccess('Password reset email sent! Check your inbox.')
+  }
+
   async function handleSubmit() {
+    if (mode === 'forgot') { await handleForgotPassword(); return }
     setLoading(true)
     setError(null)
     setSuccess(null)
@@ -100,12 +114,14 @@ export default function Login() {
         {/* Heading */}
         <div style={{ marginBottom: '28px' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--text)', marginBottom: '6px' }}>
-            {mode === 'login' ? 'Welcome back' : 'Create your account'}
+            {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
             {mode === 'login'
               ? 'Sign in to your Tempo workspace'
-              : 'Start tracking your time today'}
+              : mode === 'signup'
+              ? 'Start tracking your time today'
+              : 'Enter your email and we\'ll send a reset link'}
           </div>
         </div>
 
@@ -145,17 +161,32 @@ export default function Login() {
               style={inputStyle}
             />
           </div>
-          <div>
-            <label style={labelStyle}>Password</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              style={inputStyle}
-            />
-          </div>
+          {mode !== 'forgot' && (
+            <div>
+              <label style={labelStyle}>Password</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                style={inputStyle}
+              />
+              {mode === 'login' && (
+                <button
+                  type="button"
+                  onClick={() => { setMode('forgot'); setError(null); setSuccess(null) }}
+                  style={{
+                    background: 'none', border: 'none', padding: '4px 0 0',
+                    color: 'var(--text-muted)', fontSize: '12px',
+                    cursor: 'pointer', fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Error / Success messages */}
@@ -196,12 +227,12 @@ export default function Login() {
             marginBottom: '16px',
           }}
         >
-          {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : 'Create Account'}
+          {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
         </button>
 
         {/* Toggle mode */}
         <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)' }}>
-          {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+          {mode === 'forgot' ? 'Remember your password? ' : mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
           <button
             onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(null); setSuccess(null) }}
             style={{
@@ -211,7 +242,7 @@ export default function Login() {
               fontSize: '13px',
             }}
           >
-            {mode === 'login' ? 'Sign up' : 'Sign in'}
+            {mode === 'forgot' ? 'Sign in' : mode === 'login' ? 'Sign up' : 'Sign in'}
           </button>
         </div>
       </div>

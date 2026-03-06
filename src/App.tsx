@@ -39,14 +39,9 @@ function AuthenticatedApp() {
     }
 
     fetchPending()
-
-    // Re-fetch whenever any approval row changes
-    const channel = supabase
-      .channel('approvals-badge')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'approvals' }, fetchPending)
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
+    // Poll every 15s — avoids Supabase Realtime REPLICA IDENTITY / RLS issues
+    const interval = setInterval(fetchPending, 15000)
+    return () => clearInterval(interval)
   }, [user])
 
   // Poll the approvals table every 10s to notify user of status changes on any page.
