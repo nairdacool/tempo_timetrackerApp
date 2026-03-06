@@ -68,13 +68,14 @@ export default function Team() {
   const pendingCount = members.filter((m) => m.status === "pending-invite").length;
 
   return (
-    <div>
+    <div data-testid="team-page">
       {/* Toolbar */}
       <div style={{
         display: "flex", alignItems: "center",
         gap: "12px", marginBottom: "24px", flexWrap: "wrap",
       }}>
         <input
+          data-testid="input-search-members"
           type="text"
           placeholder="Search members…"
           value={search}
@@ -90,6 +91,7 @@ export default function Team() {
         />
 
         <select
+          data-testid="select-role-filter"
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
           style={{
@@ -105,6 +107,7 @@ export default function Team() {
         </select>
 
         <select
+          data-testid="select-sort"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as SortKey)}
           style={{
@@ -156,6 +159,7 @@ export default function Team() {
 
         {isAdmin && (
           <button
+            data-testid="btn-invite-member"
             onClick={() => setShowModal(true)}
             style={{
               marginLeft: "auto",
@@ -183,11 +187,13 @@ export default function Team() {
           No members match your search
         </div>
       ) : (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: "14px",
-        }}>
+        <div
+          data-testid="member-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+            gap: "14px",
+          }}>
           {filtered.map((member) => (
             <MemberCard
               key={member.id}

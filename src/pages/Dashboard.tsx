@@ -56,7 +56,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   }
 
   return (
-    <div>
+    <div data-testid="dashboard-page">
       {/* Stat Cards — 2x2 on mobile, 4 across on desktop */}
       <div style={{
         display: 'grid',

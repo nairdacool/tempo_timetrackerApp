@@ -79,7 +79,7 @@ export default function InviteMemberModal({ onClose, onSuccess }: InviteMemberMo
       />
 
       {/* Modal */}
-      <div style={{
+      <div data-testid="modal-invite-member" style={{
         position: 'fixed',
         top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
@@ -134,6 +134,7 @@ export default function InviteMemberModal({ onClose, onSuccess }: InviteMemberMo
               <div>
                 <label style={labelStyle}>Full Name *</label>
                 <input
+                  data-testid="input-full-name"
                   autoFocus
                   type="text"
                   placeholder="e.g. Sarah Connor"
@@ -147,6 +148,7 @@ export default function InviteMemberModal({ onClose, onSuccess }: InviteMemberMo
               <div>
                 <label style={labelStyle}>Work Email *</label>
                 <input
+                  data-testid="input-work-email"
                   type="email"
                   placeholder="e.g. sarah@acmecorp.com"
                   value={email}
@@ -162,6 +164,7 @@ export default function InviteMemberModal({ onClose, onSuccess }: InviteMemberMo
                   {roles.map(r => (
                     <button
                       key={r}
+                      data-testid={`role-btn-${r.toLowerCase()}`}
                       onClick={() => setRole(r)}
                       style={{
                         flex: 1, padding: '7px 0',
@@ -180,6 +183,7 @@ export default function InviteMemberModal({ onClose, onSuccess }: InviteMemberMo
                 </div>
                 {role === 'Other' && (
                   <input
+                    data-testid="input-custom-role"
                     autoFocus
                     type="text"
                     placeholder="Enter custom role…"
@@ -235,8 +239,9 @@ export default function InviteMemberModal({ onClose, onSuccess }: InviteMemberMo
 
             {/* Actions */}
             <div style={{ display: 'flex', gap: '10px', marginTop: '22px', justifyContent: 'flex-end' }}>
-              <button onClick={onClose} disabled={sending} style={cancelBtnStyle}>Cancel</button>
+              <button data-testid="btn-cancel" onClick={onClose} disabled={sending} style={cancelBtnStyle}>Cancel</button>
               <button
+                data-testid="btn-send-invite"
                 onClick={handleInvite}
                 disabled={!isValid || sending}
                 style={{

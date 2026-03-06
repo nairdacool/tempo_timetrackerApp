@@ -65,6 +65,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
       }}
     >
       <div
+        data-testid="modal-edit-member"
         onClick={e => e.stopPropagation()}
         style={{
           background: 'var(--bg-card)',
@@ -117,6 +118,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
             {roleOptions.map(r => (
               <button
                 key={r}
+                data-testid={`role-btn-${r.toLowerCase()}`}
                 onClick={() => setRole(r)}
                 style={{
                   padding: '7px 16px', borderRadius: '8px',
@@ -135,6 +137,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
           </div>
           {role === 'Other' && (
             <input
+              data-testid="input-custom-role"
               type="text"
               placeholder="Enter custom role…"
               value={customRole}
@@ -213,6 +216,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
         <div style={{ display: 'flex', gap: '10px' }}>
           {confirmDeactivate ? (
             <button
+              data-testid={member.isActive ? 'btn-confirm-deactivate' : 'btn-confirm-activate'}
               onClick={handleToggleActive}
               disabled={saving}
               style={{
@@ -227,6 +231,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
             </button>
           ) : (
             <button
+              data-testid={member.isActive ? 'btn-deactivate' : 'btn-reactivate'}
               onClick={() => setConfirmDeactivate(true)}
               style={{
                 padding: '7px 14px', borderRadius: '8px',
@@ -244,6 +249,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
           <div style={{ flex: 1 }} />
 
           <button
+            data-testid="btn-cancel"
             onClick={onClose}
             style={{
               padding: '7px 16px', borderRadius: '8px',
@@ -256,6 +262,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
             Cancel
           </button>
           <button
+            data-testid="btn-save-changes"
             onClick={handleSave}
             disabled={saving}
             style={{

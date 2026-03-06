@@ -127,6 +127,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
       }}
     >
       <div
+        data-testid="modal-edit-project"
         onClick={e => e.stopPropagation()}
         style={{
           background: 'var(--bg-card)',
@@ -178,6 +179,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
           <div>
             <label style={labelStyle}>Project Name</label>
             <input
+              data-testid="input-project-name"
               type="text" value={name}
               onChange={e => setName(e.target.value)}
               autoFocus style={inputStyle}
@@ -393,6 +395,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
         <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
           {confirmDelete ? (
             <button
+              data-testid="btn-confirm-delete"
               onClick={handleDelete} disabled={saving}
               style={{
                 padding: '10px 16px', borderRadius: '8px',
@@ -405,6 +408,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
             </button>
           ) : (
             <button
+              data-testid="btn-delete"
               onClick={() => setConfirmDelete(true)}
               style={{
                 padding: '10px 16px', borderRadius: '8px',
@@ -421,6 +425,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
           <div style={{ flex: 1 }} />
 
           <button
+            data-testid="btn-cancel"
             onClick={onClose}
             style={{
               padding: '10px 20px', borderRadius: '8px',
@@ -433,6 +438,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
             Cancel
           </button>
           <button
+            data-testid="btn-save-changes"
             onClick={handleSave}
             disabled={!isValid || saving}
             style={{

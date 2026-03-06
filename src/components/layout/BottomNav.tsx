@@ -53,23 +53,26 @@ export default function BottomNav({ onNavigate, pendingCount }: BottomNavProps) 
   const visibleItems = navItems.filter(item => !item.adminOnly || isAdmin)
 
   return (
-    <div style={{
-      position: 'fixed',
-      bottom: 0, left: 0, right: 0,
-      height: '64px',
-      background: 'var(--bg-card)',
-      borderTop: '1px solid var(--border)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-around',
-      zIndex: 100,
-      paddingBottom: 'env(safe-area-inset-bottom)',
-    }}>
+    <div
+      data-testid="bottom-nav"
+      style={{
+        position: 'fixed',
+        bottom: 0, left: 0, right: 0,
+        height: '64px',
+        background: 'var(--bg-card)',
+        borderTop: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        zIndex: 100,
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}>
       {visibleItems.map(item => {
         const isActive = location.pathname === item.path
         return (
           <button
             key={item.path}
+            data-testid={`nav-item-${item.path.replace('/', '')}`}
             onClick={() => onNavigate(item.path)}
             style={{
               flex: 1,

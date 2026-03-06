@@ -44,6 +44,7 @@ export default function Sidebar({
 
   return (
     <aside
+      data-testid="sidebar"
       style={{
         width: "240px",
         height: "100vh",
@@ -131,6 +132,7 @@ export default function Sidebar({
                 return (
                   <button
                     key={item.path}
+                    data-testid={`nav-item-${item.path.replace('/', '')}`}
                     onClick={() => onNavigate(item.path)}
                     style={{
                       display: "flex",
@@ -199,6 +201,7 @@ export default function Sidebar({
         style={{ padding: "12px 16px", borderTop: "1px solid var(--border)" }}
       >
         <div
+          data-testid="btn-user-profile"
           onClick={() => onNavigate('/settings')}
           style={{
             display: "flex",
@@ -251,6 +254,7 @@ export default function Sidebar({
           </div>
         </div>
         <button
+          data-testid="btn-sign-out"
           onClick={onSignOut}
           style={{
             width: "100%",

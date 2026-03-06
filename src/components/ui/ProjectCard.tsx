@@ -34,6 +34,7 @@ export default function ProjectCard({ project, onClick, readOnly }: ProjectCardP
 
   return (
     <div
+      data-testid={`project-card-${project.id}`}
       onClick={() => !readOnly && onClick(project)}
       onMouseEnter={() => !readOnly && setHovered(true)}
       onMouseLeave={() => setHovered(false)}
