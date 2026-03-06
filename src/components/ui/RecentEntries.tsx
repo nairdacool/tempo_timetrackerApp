@@ -42,6 +42,7 @@ export default function RecentEntries({ onViewAll }: { onViewAll: () => void }) 
           <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Today and yesterday</div>
         </div>
         <button
+          data-testid="btn-view-all-entries"
           onClick={onViewAll}
           style={{
             marginLeft: 'auto',

@@ -38,6 +38,7 @@ export default function DayGroup({ label, totalHours, entries, onEntryClick, rej
         return (
           <div
             key={entry.id}
+            data-testid={`time-entry-row-${entry.id}`}
             onClick={() => onEntryClick?.(entry)}
             style={{
               background: 'var(--bg-card)',
