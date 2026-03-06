@@ -14,7 +14,7 @@ interface PeriodFilterProps {
 
 export default function PeriodFilter({ active, onChange }: PeriodFilterProps) {
   return (
-    <div style={{
+    <div data-testid="period-filter" style={{
       display: 'flex',
       background: 'var(--bg-card)',
       border: '1px solid var(--border)',
@@ -25,6 +25,7 @@ export default function PeriodFilter({ active, onChange }: PeriodFilterProps) {
       {options.map(opt => (
         <button
           key={opt.id}
+          data-testid={`period-filter-btn-${opt.id}`}
           onClick={() => onChange(opt.id)}
           style={{
             padding: '6px 14px',

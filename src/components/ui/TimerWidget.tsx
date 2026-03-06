@@ -120,7 +120,7 @@ export default function TimerWidget({ onEntrySaved }: TimerWidgetProps) {
 
   return (
     <>
-      <div style={{
+      <div data-testid="timer-widget" style={{
         background: 'var(--bg-card)',
         border: `1px solid ${running ? 'var(--accent)' : 'var(--border)'}`,
         borderRadius: '12px', padding: '20px 24px',
@@ -145,6 +145,7 @@ export default function TimerWidget({ onEntrySaved }: TimerWidgetProps) {
               Project
             </div>
             <select
+              data-testid="select-timer-project"
               value={projectId}
               onChange={e => setProjectId(e.target.value)}
               disabled={running}
@@ -170,6 +171,7 @@ export default function TimerWidget({ onEntrySaved }: TimerWidgetProps) {
               Note (optional)
             </div>
             <input
+              data-testid="input-timer-description"
               type="text"
               placeholder="What are you working on?"
               value={note}
@@ -189,6 +191,7 @@ export default function TimerWidget({ onEntrySaved }: TimerWidgetProps) {
 
           {/* Play/Stop button */}
           <button
+            data-testid={running ? 'btn-timer-stop' : 'btn-timer-start'}
             onClick={running ? handleStop : handleStart}
             style={{
               width: '52px', height: '52px', borderRadius: '50%',

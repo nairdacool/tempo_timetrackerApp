@@ -68,6 +68,7 @@ export default function Approvals() {
         {tabs.map(tab => (
           <button
             key={tab.id}
+            data-testid={`approvals-filter-tab-${tab.id}`}
             onClick={() => setActiveTab(tab.id)}
             style={{
               padding: '6px 16px', borderRadius: '6px',
@@ -96,6 +97,7 @@ export default function Approvals() {
           <span>⚡ {counts.pending} timesheets waiting for your review</span>
           <div style={{ flex: 1 }} />
           <button
+            data-testid="btn-approve-all"
             onClick={approveAll}
             style={{
               padding: '6px 14px', borderRadius: '7px',

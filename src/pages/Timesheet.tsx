@@ -222,6 +222,7 @@ export default function Timesheet() {
       {isAdmin && teamMembers.length > 0 && (
         <div ref={dropdownRef} style={{ position: 'relative', marginBottom: 16, display: 'inline-block', minWidth: 220 }}>
           <button
+            data-testid="btn-select-member"
             onClick={() => { setDropdownOpen(o => !o); setSearch(''); }}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
@@ -258,6 +259,7 @@ export default function Timesheet() {
             }}>
               <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
                 <input
+                  data-testid="input-search-member"
                   autoFocus
                   value={search}
                   onChange={e => setSearch(e.target.value)}
@@ -272,6 +274,7 @@ export default function Timesheet() {
               <div style={{ maxHeight: 220, overflowY: 'auto' }}>
                 {/* My Timesheet option */}
                 <div
+                  data-testid="member-option-mine"
                   onClick={() => { setViewingUserId(undefined); setDropdownOpen(false); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
@@ -290,6 +293,7 @@ export default function Timesheet() {
                   .map(m => (
                     <div
                       key={m.id}
+                      data-testid={`member-option-${m.id}`}
                       onClick={() => { setViewingUserId(m.id); setDropdownOpen(false); }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 8,

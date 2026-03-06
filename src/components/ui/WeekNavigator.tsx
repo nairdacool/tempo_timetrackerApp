@@ -17,7 +17,7 @@ export default function WeekNavigator({
   const { isMobile } = useBreakpoint()
 
   return (
-    <div style={{
+    <div data-testid="week-navigator" style={{
       background: 'var(--bg-card)',
       border: '1px solid var(--border)',
       borderRadius: '12px',
@@ -32,7 +32,7 @@ export default function WeekNavigator({
 
       {/* Week navigation row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-        <button onClick={onPrev} style={navBtnStyle}>‹</button>
+        <button data-testid="btn-prev-week" onClick={onPrev} style={navBtnStyle}>‹</button>
         <div style={{
           fontFamily: 'var(--font-display)',
           fontSize: isMobile ? '16px' : '18px',
@@ -42,7 +42,7 @@ export default function WeekNavigator({
         }}>
           {weekLabel}
         </div>
-        <button onClick={onNext} style={navBtnStyle}>›</button>
+        <button data-testid="btn-next-week" onClick={onNext} style={navBtnStyle}>›</button>
 
         <span style={{ fontSize: '13px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
           Total:&nbsp;
@@ -61,6 +61,7 @@ export default function WeekNavigator({
         )}
 
         <button
+          data-testid="btn-export-csv"
           onClick={onExport}
           style={{
             padding: '8px 16px', borderRadius: '8px',
@@ -82,6 +83,7 @@ export default function WeekNavigator({
         </button>
 
         <button
+          data-testid="btn-submit-timesheet"
           onClick={onSubmit}
           disabled={submitting || !canSubmit}
           title={!canSubmit ? 'No draft entries to submit' : undefined}
