@@ -35,7 +35,7 @@ export default function SetPassword({ onDone }: SetPasswordProps) {
   }
 
   return (
-    <div style={{
+    <div data-testid="set-password-page" style={{
       minHeight: '100vh', display: 'flex',
       alignItems: 'center', justifyContent: 'center',
       background: 'var(--bg)',
@@ -99,6 +99,7 @@ export default function SetPassword({ onDone }: SetPasswordProps) {
             NEW PASSWORD
           </label>
           <input
+            data-testid="input-new-password"
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
@@ -122,6 +123,7 @@ export default function SetPassword({ onDone }: SetPasswordProps) {
             CONFIRM PASSWORD
           </label>
           <input
+            data-testid="input-confirm-password"
             type="password"
             value={confirm}
             onChange={e => setConfirm(e.target.value)}
@@ -138,6 +140,7 @@ export default function SetPassword({ onDone }: SetPasswordProps) {
         </div>
 
         <button
+          data-testid="btn-set-password"
           onClick={handleSubmit}
           disabled={loading || !password || !confirm}
           style={{
