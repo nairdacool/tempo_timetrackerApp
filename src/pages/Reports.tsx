@@ -103,7 +103,7 @@ export default function Reports() {
   }
 
   return (
-    <div>
+    <div data-testid="reports-page">
       {/* Toolbar */}
       <div
         style={{

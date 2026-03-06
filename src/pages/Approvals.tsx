@@ -46,7 +46,7 @@ export default function Approvals() {
   )
 
   return (
-    <div>
+    <div data-testid="approvals-page">
       {error && (
         <div style={{
           background: '#fde8e8', color: '#c03030',

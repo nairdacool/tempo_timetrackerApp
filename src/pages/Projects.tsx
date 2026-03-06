@@ -120,7 +120,7 @@ export default function Projects() {
     );
 
   return (
-    <div>
+    <div data-testid="projects-page">
       {/* Toolbar */}
       <div
         style={{
@@ -132,6 +132,7 @@ export default function Projects() {
         }}
       >
         <input
+          data-testid="input-search-projects"
           type="text"
           placeholder="Search projects…"
           value={search}
@@ -212,6 +213,7 @@ export default function Projects() {
         </select>
 
         <select
+          data-testid="select-client-filter"
           value={clientFilter}
           onChange={(e) => setClientFilter(e.target.value)}
           style={{
@@ -251,6 +253,7 @@ export default function Projects() {
 
         {isAdmin && (
           <button
+            data-testid="btn-new-project"
             onClick={() => setShowModal(true)}
             style={{
               marginLeft: "auto",
@@ -293,6 +296,7 @@ export default function Projects() {
 
       {/* Grid */}
       <div
+        data-testid="project-grid"
         style={{
           display: "grid",
           gridTemplateColumns: isMobile

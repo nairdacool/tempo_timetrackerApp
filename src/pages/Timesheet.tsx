@@ -217,7 +217,7 @@ export default function Timesheet() {
   }
 
   return (
-    <div>
+    <div data-testid="timesheet-page">
       {/* Admin member picker — searchable dropdown */}
       {isAdmin && teamMembers.length > 0 && (
         <div ref={dropdownRef} style={{ position: 'relative', marginBottom: 16, display: 'inline-block', minWidth: 220 }}>

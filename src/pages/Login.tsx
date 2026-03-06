@@ -83,15 +83,19 @@ export default function Login() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--bg)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px',
-    }}>
-      <div style={{
+    <div
+      data-testid="login-page"
+      style={{
+        minHeight: '100vh',
+        background: 'var(--bg)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}>
+      <div
+        data-testid="login-form"
+        style={{
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: '20px',
@@ -132,6 +136,7 @@ export default function Login() {
               <div>
                 <label style={labelStyle}>Full Name</label>
                 <input
+                  data-testid="input-name"
                   type="text"
                   placeholder="Jane Doe"
                   value={name}
@@ -142,6 +147,7 @@ export default function Login() {
               <div>
                 <label style={labelStyle}>Organization Name</label>
                 <input
+                  data-testid="input-organization"
                   type="text"
                   placeholder="Acme Inc."
                   value={organization}
@@ -154,6 +160,7 @@ export default function Login() {
           <div>
             <label style={labelStyle}>Email</label>
             <input
+              data-testid="input-email"
               type="email"
               placeholder="you@company.com"
               value={email}
@@ -165,6 +172,7 @@ export default function Login() {
             <div>
               <label style={labelStyle}>Password</label>
               <input
+                data-testid="input-password"
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -174,6 +182,7 @@ export default function Login() {
               />
               {mode === 'login' && (
                 <button
+                  data-testid="btn-forgot-password"
                   type="button"
                   onClick={() => { setMode('forgot'); setError(null); setSuccess(null) }}
                   style={{
@@ -213,6 +222,7 @@ export default function Login() {
 
         {/* Submit */}
         <button
+          data-testid="btn-submit"
           onClick={handleSubmit}
           disabled={loading}
           style={{
@@ -234,6 +244,7 @@ export default function Login() {
         <div style={{ textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)' }}>
           {mode === 'forgot' ? 'Remember your password? ' : mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
           <button
+            data-testid="btn-toggle-mode"
             onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(null); setSuccess(null) }}
             style={{
               background: 'none', border: 'none',

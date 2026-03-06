@@ -21,6 +21,7 @@ export default function MemberCard({ member, isAdmin, onEdit }: MemberCardProps)
 
   return (
     <div
+      data-testid={`member-card-${member.id}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -42,6 +43,7 @@ export default function MemberCard({ member, isAdmin, onEdit }: MemberCardProps)
       {/* Edit button — admin only */}
       {isAdmin && onEdit && hovered && (
         <button
+          data-testid="btn-edit-member"
           onClick={() => onEdit(member)}
           style={{
             position: 'absolute', top: '12px', right: '12px',
