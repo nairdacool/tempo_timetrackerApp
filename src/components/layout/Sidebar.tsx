@@ -199,12 +199,21 @@ export default function Sidebar({
         style={{ padding: "12px 16px", borderTop: "1px solid var(--border)" }}
       >
         <div
+          onClick={() => onNavigate('/settings')}
           style={{
             display: "flex",
             alignItems: "center",
             gap: "10px",
             marginBottom: "8px",
+            cursor: "pointer",
+            borderRadius: "8px",
+            padding: "6px 4px",
+            margin: "-6px -4px 2px",
+            transition: "background 0.15s",
           }}
+          onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-subtle)'}
+          onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'transparent'}
+          title="Profile settings"
         >
           <div
             style={{

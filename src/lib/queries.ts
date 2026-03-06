@@ -629,6 +629,33 @@ export async function deleteProject(id: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+// ===== PROFILE =====
+
+export async function updateProfile(updates: {
+  fullName: string
+  initials: string
+  color: string
+}): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      full_name: updates.fullName,
+      initials:  updates.initials,
+      color:     updates.color,
+    })
+    .eq('id', user.id)
+
+  if (error) throw new Error(error.message)
+}
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) throw new Error(error.message)
+}
+
 // ===== ORGANIZATIONS =====
 
 export async function fetchOrganizations(): Promise<Organization[]> {

@@ -3,6 +3,15 @@ import type { Project } from '../../types'
 import { fetchActiveProjects, insertTimeEntry } from '../../lib/queries'
 import TimeEntryModal from './TimeEntryModal'
 
+const STORAGE_KEY = 'tempo_timer'
+
+interface PersistedTimer {
+  projectId:  string
+  note:       string
+  startedAt:  string  // ISO timestamp — used to recalculate elapsed on restore
+  savedStart: string  // HH:MM for the entry modal
+}
+
 function pad(n: number) { return String(n).padStart(2, '0') }
 
 function toTimeString(date: Date) {
@@ -17,16 +26,37 @@ export default function TimerWidget({ onEntrySaved }: TimerWidgetProps) {
   const [note,       setNote]       = useState('')
   const [running,    setRunning]    = useState(false)
   const [elapsed,    setElapsed]    = useState(0)
-  // Used to track when the timer began (might be used later)
-  const [_startedAt,  setStartedAt]  = useState<Date | null>(null)
+  const [startedAt,  setStartedAt]  = useState<Date | null>(null)
   const [showModal,  setShowModal]  = useState(false)
   const [savedStart, setSavedStart] = useState('')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Load projects, then restore any persisted timer state
   useEffect(() => {
     fetchActiveProjects().then(data => {
       setProjects(data)
-      if (data.length > 0) setProjectId(data[0].id.toString())
+
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        try {
+          const t: PersistedTimer = JSON.parse(stored)
+          const start = new Date(t.startedAt)
+          const secondsElapsed = Math.floor((Date.now() - start.getTime()) / 1000)
+          // Fall back to first project if the stored one is no longer active
+          const validId = data.find(p => p.id === t.projectId)?.id ?? data[0]?.id ?? ''
+          setProjectId(validId)
+          setNote(t.note)
+          setStartedAt(start)
+          setSavedStart(t.savedStart)
+          setElapsed(secondsElapsed)
+          setRunning(true)
+        } catch {
+          localStorage.removeItem(STORAGE_KEY)
+          if (data.length > 0) setProjectId(data[0].id)
+        }
+      } else {
+        if (data.length > 0) setProjectId(data[0].id)
+      }
     })
   }, [])
 
@@ -41,15 +71,32 @@ export default function TimerWidget({ onEntrySaved }: TimerWidgetProps) {
 
   function handleStart() {
     const now = new Date()
+    const start = toTimeString(now)
     setStartedAt(now)
-    setSavedStart(toTimeString(now))
+    setSavedStart(start)
     setElapsed(0)
     setRunning(true)
+
+    const persisted: PersistedTimer = {
+      projectId,
+      note,
+      startedAt: now.toISOString(),
+      savedStart: start,
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted))
   }
 
   function handleStop() {
     setRunning(false)
     setShowModal(true)
+  }
+
+  function clearTimer() {
+    localStorage.removeItem(STORAGE_KEY)
+    setElapsed(0)
+    setStartedAt(null)
+    setNote('')
+    setShowModal(false)
   }
 
   async function handleSaveEntry(data: {
@@ -61,11 +108,8 @@ export default function TimerWidget({ onEntrySaved }: TimerWidgetProps) {
     durationMinutes: number
   }) {
     await insertTimeEntry(data)
-    // Reset timer
-    setElapsed(0)
-    setStartedAt(null)
-    setNote('')
-    onEntrySaved?.() 
+    clearTimer()
+    onEntrySaved?.()
   }
 
   const h = Math.floor(elapsed / 3600)
@@ -171,7 +215,7 @@ export default function TimerWidget({ onEntrySaved }: TimerWidgetProps) {
           initialEndTime={endTime}
           initialNote={note}  
           onSave={handleSaveEntry}
-          onClose={() => setShowModal(false)}
+          onClose={clearTimer}
         />
       )}
     </>
