@@ -150,6 +150,7 @@ export default function Reports() {
               From
             </span>
             <input
+              data-testid="input-date-from"
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
@@ -172,12 +173,14 @@ export default function Reports() {
               To
             </span>
             <input
+              data-testid="input-date-to"
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               style={dateInputStyle}
             />
             <button
+              data-testid="btn-apply-date-range"
               onClick={handleApply}
               disabled={!dateFrom || !dateTo || dateFrom > dateTo}
               style={{
@@ -204,9 +207,9 @@ export default function Reports() {
         )}
 
         <div style={{ flex: 1 }} />
-        <button onClick={handleExportPdf} style={exportBtnStyle}>Export PDF</button>
-        <button onClick={handleExportDetail} style={exportBtnStyle}>Export Detail</button>
-        <button onClick={handleExportCsv} style={exportBtnStyle}>Export CSV</button>
+        <button data-testid="btn-export-pdf" onClick={handleExportPdf} style={exportBtnStyle}>Export PDF</button>
+        <button data-testid="btn-export-detail" onClick={handleExportDetail} style={exportBtnStyle}>Export Detail</button>
+        <button data-testid="btn-export-csv" onClick={handleExportCsv} style={exportBtnStyle}>Export CSV</button>
       </div>
 
       {/* Loading */}

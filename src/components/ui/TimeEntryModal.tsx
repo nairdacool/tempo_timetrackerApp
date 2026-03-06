@@ -133,6 +133,7 @@ export default function TimeEntryModal({
       }}
     >
       <div
+        data-testid="modal-time-entry"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "var(--bg-card)",
@@ -234,6 +235,7 @@ export default function TimeEntryModal({
           <div>
             <label style={labelStyle}>Project</label>
             <select
+              data-testid="select-project"
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               style={inputStyle}
@@ -250,6 +252,7 @@ export default function TimeEntryModal({
           <div>
             <label style={labelStyle}>Description</label>
             <input
+              data-testid="input-description"
               type="text"
               placeholder="What did you work on?"
               value={description}
@@ -271,6 +274,7 @@ export default function TimeEntryModal({
             <div>
               <label style={labelStyle}>Date</label>
               <input
+                data-testid="input-date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -280,6 +284,7 @@ export default function TimeEntryModal({
             <div>
               <label style={labelStyle}>Start</label>
               <input
+                data-testid="input-start-time"
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
@@ -289,6 +294,7 @@ export default function TimeEntryModal({
             <div>
               <label style={labelStyle}>End</label>
               <input
+                data-testid="input-end-time"
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
@@ -336,6 +342,7 @@ export default function TimeEntryModal({
             onDelete &&
             (confirmDelete ? (
               <button
+                data-testid="btn-confirm-delete-entry"
                 onClick={handleDelete}
                 disabled={saving}
                 style={{
@@ -354,6 +361,7 @@ export default function TimeEntryModal({
               </button>
             ) : (
               <button
+                data-testid="btn-delete-entry"
                 onClick={() => setConfirmDelete(true)}
                 style={{
                   padding: "10px 16px",
@@ -374,6 +382,7 @@ export default function TimeEntryModal({
           <div style={{ flex: 1 }} />
 
           <button
+            data-testid="btn-cancel"
             onClick={onClose}
             style={{
               padding: "10px 20px",
@@ -390,6 +399,7 @@ export default function TimeEntryModal({
             Cancel
           </button>
           <button
+            data-testid="btn-save-entry"
             onClick={handleSave}
             disabled={!isValid || saving}
             style={{

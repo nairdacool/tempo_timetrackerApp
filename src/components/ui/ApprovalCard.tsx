@@ -47,6 +47,7 @@ export default function ApprovalCard({ approval, onStatusChange, onView }: Appro
 
   return (
     <div
+      data-testid={`approval-card-${approval.id}`}
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border)",
@@ -146,6 +147,7 @@ export default function ApprovalCard({ approval, onStatusChange, onView }: Appro
         {approval.status === "pending" ? (
           <>
             <button
+              data-testid="btn-view-approval"
               onClick={() => onView(approval)}
               style={{
                 padding: "7px 14px", borderRadius: "8px",
@@ -167,6 +169,7 @@ export default function ApprovalCard({ approval, onStatusChange, onView }: Appro
               View
             </button>
             <button
+              data-testid="btn-approve"
               onClick={() => handleAction("approve")}
               style={{
                 padding: "7px 14px", borderRadius: "8px",
@@ -182,6 +185,7 @@ export default function ApprovalCard({ approval, onStatusChange, onView }: Appro
             </button>
             {confirming !== "reject" ? (
               <button
+                data-testid="btn-reject"
                 onClick={() => handleAction("reject")}
                 style={{
                   padding: "7px 14px", borderRadius: "8px",
@@ -199,6 +203,7 @@ export default function ApprovalCard({ approval, onStatusChange, onView }: Appro
               /* Inline rejection reason row */
               <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                 <input
+                  data-testid="input-rejection-reason"
                   autoFocus
                   placeholder="Reason (optional)"
                   value={rejectReason}
@@ -213,6 +218,7 @@ export default function ApprovalCard({ approval, onStatusChange, onView }: Appro
                   }}
                 />
                 <button
+                  data-testid="btn-confirm-reject"
                   onClick={handleConfirmReject}
                   style={{
                     padding: "6px 12px", borderRadius: "7px",
@@ -227,6 +233,7 @@ export default function ApprovalCard({ approval, onStatusChange, onView }: Appro
             )}
             {confirming && confirming !== "reject" && (
               <button
+                data-testid="btn-cancel-confirm"
                 onClick={() => setConfirming(null)}
                 style={{
                   padding: "7px 10px", borderRadius: "8px",
@@ -257,6 +264,7 @@ export default function ApprovalCard({ approval, onStatusChange, onView }: Appro
               </span>
             )}
             <button
+              data-testid="btn-view-approval"
               onClick={() => onView(approval)}
               style={{
                 padding: "7px 14px", borderRadius: "8px",

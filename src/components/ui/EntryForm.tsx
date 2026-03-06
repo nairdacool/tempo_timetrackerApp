@@ -58,7 +58,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
   }
 
   return (
-    <div style={{
+    <div data-testid="entry-form" style={{
       background: 'var(--bg-card)',
       border: '2px dashed var(--border)',
       borderRadius: '12px',
@@ -78,6 +78,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
           <label style={labelStyle}>Project</label>
           <select
+            data-testid="select-project"
             value={projectId}
             onChange={e => setProjectId(e.target.value)}
             style={inputStyle}
@@ -91,6 +92,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
           <label style={labelStyle}>Description</label>
           <input
+            data-testid="input-description"
             type="text"
             placeholder="What did you work on?"
             value={description}
@@ -111,6 +113,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
           <label style={labelStyle}>Date</label>
           <input
+            data-testid="input-date"
             type="date"
             value={date}
             onChange={e => setDate(e.target.value)}
@@ -121,6 +124,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
           <label style={labelStyle}>Start</label>
           <input
+            data-testid="input-start-time"
             type="time"
             value={startTime}
             onChange={e => setStartTime(e.target.value)}
@@ -135,6 +139,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
             )}
           </label>
           <input
+            data-testid="input-end-time"
             type="time"
             value={endTime}
             onChange={e => setEndTime(e.target.value)}
@@ -145,6 +150,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
         {/* Button hidden on mobile — full width below */}
         {!isMobile && (
           <button
+            data-testid="btn-add-entry"
             onClick={handleAdd}
             disabled={!isValid}
             style={{
@@ -165,6 +171,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
       {/* Mobile: full width button */}
       {isMobile && (
         <button
+          data-testid="btn-add-entry"
           onClick={handleAdd}
           disabled={!isValid}
           style={{

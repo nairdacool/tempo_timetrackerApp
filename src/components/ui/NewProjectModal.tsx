@@ -56,7 +56,7 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
       />
 
       {/* Modal */}
-      <div style={{
+      <div data-testid="modal-new-project" style={{
         position: 'fixed',
         top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
@@ -111,6 +111,7 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
           <div>
             <label style={labelStyle}>Project Name *</label>
             <input
+              data-testid="input-project-name"
               autoFocus
               type="text"
               placeholder="e.g. Website Redesign"
@@ -122,6 +123,7 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
           <div>
             <label style={labelStyle}>Client</label>
             <input
+              data-testid="input-client"
               type="text"
               placeholder="e.g. Acme Corp (leave blank for Internal)"
               value={client}
@@ -132,6 +134,7 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
           <div>
             <label style={labelStyle}>Budget Hours</label>
             <input
+              data-testid="input-budget-hours"
               type="number"
               min="1"
               value={budget}
@@ -148,6 +151,7 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
               </div>
             </div>
             <button
+              data-testid="btn-toggle-billable"
               type="button"
               onClick={() => setBillable(b => !b)}
               style={{
@@ -169,6 +173,7 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
             <div>
               <label style={labelStyle}>Organization</label>
               <select
+                data-testid="select-organization"
                 value={orgId}
                 onChange={e => setOrgId(e.target.value)}
                 style={inputStyle}
@@ -191,8 +196,9 @@ export default function NewProjectModal({ onClose, onAdd }: NewProjectModalProps
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: '10px', marginTop: '20px', justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={cancelBtnStyle}>Cancel</button>
+          <button data-testid="btn-cancel" onClick={onClose} style={cancelBtnStyle}>Cancel</button>
           <button
+            data-testid="btn-create-project"
             onClick={handleSubmit}
             disabled={!name}
             style={{
