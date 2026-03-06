@@ -19,6 +19,7 @@ export interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -146,10 +147,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   }
 
+  async function refreshProfile() {
+    if (!user) return;
+    const { data: { session: s } } = await supabase.auth.getSession();
+    const p = await loadProfile(user.id, s?.user.user_metadata?.organization);
+    setProfile(p);
+  }
+
   const isAdmin = profile?.role === "Admin";
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, isAdmin, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, isAdmin, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
