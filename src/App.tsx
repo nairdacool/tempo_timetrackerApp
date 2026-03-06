@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useAuth } from './context/useAuth'
 import { AuthProvider } from './context/AuthContext'
 import { supabase } from './lib/supabase'
@@ -49,88 +49,55 @@ function AuthenticatedApp() {
     return () => { supabase.removeChannel(channel) }
   }, [user])
 
-  // Notify the current user when one of their time entries is approved or rejected.
-  // We listen on time_entries (not approvals) because Supabase Realtime respects RLS —
-  // non-admin users have no SELECT on others' approvals rows, so postgres_changes
-  // on the approvals table is silently dropped before it reaches non-admin clients.
-  // Users always have access to their own time_entries, so this is reliable.
-  const knownEntryStatuses = useRef<Map<string, string>>(new Map())
-  const notifyTimer        = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Map of weekKey (mondayISO_status) → status, collects all updates in the debounce window
-  const pendingNotify      = useRef<Map<string, string>>(new Map())
+  // Poll the approvals table every 10s to notify user of status changes on any page.
+  // Polling is used instead of Supabase Realtime to avoid REPLICA IDENTITY / RLS
+  // configuration requirements that silently break realtime delivery.
+  const knownApprovalStatuses = useRef<Map<string, string>>(new Map())
+  const notifiedApprovals     = useRef<Set<string>>(new Set())
+
+  const checkApprovalNotifications = useCallback(async (isInitial = false) => {
+    if (!user || isAdmin) return
+    const { data } = await supabase
+      .from('approvals')
+      .select('id, status, week_start, week_end')
+      .eq('user_id', user.id)
+      .in('status', ['approved', 'rejected'])
+      .order('week_start', { ascending: false })
+      .limit(20)
+
+    if (!data) return
+
+    data.forEach(a => {
+      const prev = knownApprovalStatuses.current.get(a.id)
+      knownApprovalStatuses.current.set(a.id, a.status)
+
+      // On first load, just seed — don't toast for existing statuses
+      if (isInitial) return
+      if (prev === a.status) return
+      if (notifiedApprovals.current.has(`${a.id}_${a.status}`)) return
+      notifiedApprovals.current.add(`${a.id}_${a.status}`)
+
+      const start = new Date(a.week_start + 'T00:00:00')
+      const end   = new Date(a.week_end   + 'T00:00:00')
+      const fmt   = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const label = `${fmt(start)} – ${fmt(end)}`
+
+      if (a.status === 'approved') {
+        toast.success(`✓ Timesheet approved\n${label}`, { duration: 5000, style: { whiteSpace: 'pre-line' } })
+      } else if (a.status === 'rejected') {
+        toast.error(`✗ Timesheet rejected\n${label}`, { duration: 7000, style: { whiteSpace: 'pre-line' } })
+      }
+    })
+  }, [user, isAdmin])
 
   useEffect(() => {
-    if (!user) return
-
-    // Seed current statuses for the last 60 days so page-load doesn't fire stale toasts
-    const since = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)
-    supabase
-      .from('time_entries')
-      .select('id, status')
-      .eq('user_id', user.id)
-      .gte('date', since)
-      .then(({ data }) => {
-        ;(data ?? []).forEach(e => knownEntryStatuses.current.set(e.id, e.status))
-      })
-
-    const channel = supabase
-      .channel('entry-status-notifications')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'time_entries' },
-        (payload) => {
-          const row = payload.new as { id: string; user_id: string; status: string; date: string }
-          if (row.user_id !== user.id) return
-
-          const prev = knownEntryStatuses.current.get(row.id)
-          knownEntryStatuses.current.set(row.id, row.status)
-
-          if (prev === row.status) return
-          if (row.status !== 'approved' && row.status !== 'rejected') return
-
-          // Derive the Monday of this entry's week as a stable key
-          const d = new Date(row.date + 'T00:00:00')
-          const diff = d.getDay() === 0 ? -6 : 1 - d.getDay()
-          const monday = new Date(d)
-          monday.setDate(d.getDate() + diff)
-          const weekKey = `${monday.toISOString().slice(0, 10)}_${row.status}`
-
-          if (pendingNotify.current.has(weekKey)) return
-          pendingNotify.current.set(weekKey, row.status)
-
-          // Debounce: collapse multiple simultaneous entry updates into one toast per week
-          if (notifyTimer.current) clearTimeout(notifyTimer.current)
-          notifyTimer.current = setTimeout(() => {
-            pendingNotify.current.forEach((status, key) => {
-              const mondayStr = key.split('_')[0]
-              const mondayDate = new Date(mondayStr + 'T00:00:00')
-              const sundayDate = new Date(mondayDate.getTime() + 6 * 86400000)
-              const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-              const weekLabel = `${fmt(mondayDate)} – ${fmt(sundayDate)}`
-
-              if (status === 'approved') {
-                toast.success(`✓ Timesheet approved\n${weekLabel}`, {
-                  duration: 5000,
-                  style: { whiteSpace: 'pre-line' },
-                })
-              } else if (status === 'rejected') {
-                toast.error(`✗ Timesheet rejected\n${weekLabel}`, {
-                  duration: 7000,
-                  style: { whiteSpace: 'pre-line' },
-                })
-              }
-            })
-            pendingNotify.current.clear()
-          }, 500)
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-      if (notifyTimer.current) clearTimeout(notifyTimer.current)
-    }
-  }, [user])
+    if (!user || isAdmin) return
+    knownApprovalStatuses.current.clear()
+    notifiedApprovals.current.clear()
+    checkApprovalNotifications(true)
+    const interval = setInterval(() => checkApprovalNotifications(false), 10000)
+    return () => clearInterval(interval)
+  }, [user, isAdmin, checkApprovalNotifications])
 
   if (loading) return (
     <div style={{
