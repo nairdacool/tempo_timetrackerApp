@@ -140,7 +140,7 @@ export default function Settings() {
   }
 
   return (
-    <div style={{ maxWidth: '560px', margin: '0 auto', padding: '8px 0 40px' }}>
+    <div data-testid="settings-page" style={{ maxWidth: '560px', margin: '0 auto', padding: '8px 0 40px' }}>
       {/* Page header */}
       <div style={{ marginBottom: '28px' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '26px', color: 'var(--text)' }}>Settings</div>
@@ -167,6 +167,7 @@ export default function Settings() {
 
         <Field label="Full name">
           <input
+            data-testid="input-full-name"
             style={inputStyle}
             value={fullName}
             onChange={e => handleNameChange(e.target.value)}
@@ -176,6 +177,7 @@ export default function Settings() {
 
         <Field label="Initials">
           <input
+            data-testid="input-initials"
             style={{ ...inputStyle, width: '80px' }}
             value={initials}
             maxLength={3}
@@ -192,6 +194,7 @@ export default function Settings() {
             {PRESET_COLORS.map(c => (
               <button
                 key={c}
+                data-testid={`color-btn-${c}`}
                 onClick={() => setColor(c)}
                 title={c}
                 style={{
@@ -204,6 +207,7 @@ export default function Settings() {
             ))}
             {/* Custom color input */}
             <label
+              data-testid="color-btn-custom"
               title="Custom color"
               style={{
                 width: '28px', height: '28px', borderRadius: '50%',
@@ -216,6 +220,7 @@ export default function Settings() {
               }}
             >
               <input
+                data-testid="input-color-custom"
                 type="color"
                 value={color}
                 onChange={e => setColor(e.target.value)}
@@ -239,6 +244,7 @@ export default function Settings() {
         )}
 
         <button
+          data-testid="btn-save-profile"
           onClick={handleProfileSave}
           disabled={profileSaving}
           style={{
@@ -259,6 +265,7 @@ export default function Settings() {
         <Field label="New password">
           <div style={{ position: 'relative' }}>
             <input
+              data-testid="input-new-password"
               type={showPw ? 'text' : 'password'}
               style={{ ...inputStyle, paddingRight: '40px' }}
               value={newPassword}
@@ -267,6 +274,7 @@ export default function Settings() {
               autoComplete="new-password"
             />
             <button
+              data-testid="btn-toggle-password-visibility"
               onClick={() => setShowPw(v => !v)}
               style={{
                 position: 'absolute', right: '10px', top: '50%',
@@ -283,6 +291,7 @@ export default function Settings() {
 
         <Field label="Confirm password">
           <input
+            data-testid="input-confirm-password"
             type={showPw ? 'text' : 'password'}
             style={inputStyle}
             value={confirmPassword}
@@ -305,6 +314,7 @@ export default function Settings() {
         )}
 
         <button
+          data-testid="btn-update-password"
           onClick={handlePasswordSave}
           disabled={pwSaving}
           style={{

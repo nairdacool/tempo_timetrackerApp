@@ -85,6 +85,7 @@ function OrgEditModal({
       }}
     >
       <div
+        data-testid="modal-edit-org"
         onClick={e => e.stopPropagation()}
         style={{
           background: 'var(--bg-card)', border: '1px solid var(--border)',
@@ -129,6 +130,7 @@ function OrgEditModal({
             letterSpacing: '0.4px', marginBottom: 6,
           }}>Organization Name</label>
           <input
+            data-testid="input-org-name"
             autoFocus
             type="text"
             value={name}
@@ -149,6 +151,7 @@ function OrgEditModal({
         <div style={{ display: 'flex', gap: 10 }}>
           {confirmDelete ? (
             <button
+              data-testid="btn-confirm-delete-org"
               onClick={handleDelete}
               disabled={saving}
               style={{
@@ -162,6 +165,7 @@ function OrgEditModal({
             </button>
           ) : (
             <button
+              data-testid="btn-delete-org"
               onClick={() => setConfirmDelete(true)}
               style={{
                 padding: '10px 16px', borderRadius: 8,
@@ -178,6 +182,7 @@ function OrgEditModal({
           <div style={{ flex: 1 }} />
 
           <button
+            data-testid="btn-cancel"
             onClick={onClose}
             style={{
               padding: '10px 20px', borderRadius: 8,
@@ -190,6 +195,7 @@ function OrgEditModal({
             Cancel
           </button>
           <button
+            data-testid="btn-save-org"
             onClick={handleSave}
             disabled={!name.trim() || saving}
             style={{
@@ -261,7 +267,7 @@ export default function Organizations() {
   }
 
   return (
-    <div style={{ padding: '32px 28px', maxWidth: 1100, margin: '0 auto' }}>
+    <div data-testid="organizations-page" style={{ padding: '32px 28px', maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
@@ -269,6 +275,7 @@ export default function Organizations() {
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '4px 0 0' }}>Manage your organizations and their members &amp; projects</p>
         </div>
         <button
+          data-testid="btn-new-organization"
           onClick={() => setCreating(true)}
           style={{
             padding: '9px 18px', borderRadius: 8, border: 'none',
@@ -295,6 +302,7 @@ export default function Organizations() {
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <input
+            data-testid="input-new-org-name"
             autoFocus
             placeholder="Organization name…"
             value={newOrgName}
@@ -306,10 +314,10 @@ export default function Organizations() {
               color: 'var(--text)', fontSize: 14, outline: 'none',
             }}
           />
-          <button onClick={handleCreate} disabled={saving || !newOrgName.trim()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          <button data-testid="btn-create-org" onClick={handleCreate} disabled={saving || !newOrgName.trim()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             {saving ? 'Creating…' : 'Create'}
           </button>
-          <button onClick={() => setCreating(false)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
+          <button data-testid="btn-cancel-create-org" onClick={() => setCreating(false)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
             Cancel
           </button>
         </div>
@@ -336,6 +344,7 @@ export default function Organizations() {
               return (
                 <div
                   key={org.id}
+                  data-testid={`org-card-${org.id}`}
                   onClick={() => setSelected(isSelected ? null : org)}
                   style={{
                     background: 'var(--bg-card)',
@@ -361,6 +370,7 @@ export default function Organizations() {
                         </div>
                         <div style={{ display: 'flex', gap: 4 }} onClick={e => e.stopPropagation()}>
                           <button
+                            data-testid={`btn-edit-org-${org.id}`}
                             title="Edit / Delete"
                             onClick={() => setOrgModal(org)}
                             style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 13 }}
@@ -412,6 +422,7 @@ export default function Organizations() {
                           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{m.role} · {m.email}</div>
                         </div>
                         <button
+                          data-testid={`btn-remove-member-${m.id}`}
                           title="Remove from org"
                           onClick={async () => { await removeMemberFromOrg(m.id); await load() }}
                           style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontSize: 14, flexShrink: 0 }}
@@ -438,6 +449,7 @@ export default function Organizations() {
                         <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{p.name}</div>
                         <StatusPill status={p.status} />
                         <button
+                          data-testid={`btn-remove-project-${p.id}`}
                           title="Remove from org"
                           onClick={async () => { await removeProjectFromOrg(p.id); await load() }}
                           style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', color: '#ef4444', fontSize: 14, flexShrink: 0 }}
