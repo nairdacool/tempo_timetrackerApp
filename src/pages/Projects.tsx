@@ -121,7 +121,7 @@ export default function Projects() {
 
   return (
     <div data-testid="projects-page">
-      {/* Toolbar */}}
+      {/* Toolbar */}
       <div
         style={{
           display: "flex",
