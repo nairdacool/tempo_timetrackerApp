@@ -210,6 +210,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
             <div>
               <label style={labelStyle}>Budget Hours</label>
               <input
+                data-testid="input-budget-hours"
                 type="number" min={1} value={budgetHours}
                 onChange={e => setBudgetHours(Number(e.target.value))}
                 style={inputStyle}
@@ -217,7 +218,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
             </div>
             <div>
               <label style={labelStyle}>Status</label>
-              <select value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>
+              <select data-testid="select-status" value={status} onChange={e => setStatus(e.target.value)} style={inputStyle}>
                 {statusOptions.map(s => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
@@ -234,6 +235,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
               </div>
             </div>
             <button
+              data-testid="btn-toggle-billable"
               type="button"
               onClick={() => setBillable(b => !b)}
               style={{
@@ -257,6 +259,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
             <div>
               <label style={labelStyle}>Organization</label>
               <select
+                data-testid="select-organization"
                 value={orgId}
                 onChange={e => setOrgId(e.target.value)}
                 style={inputStyle}

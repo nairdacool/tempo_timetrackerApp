@@ -125,6 +125,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Your latest logged work</div>
             </div>
             <button
+              data-testid="btn-view-all-entries"
               onClick={() => onNavigate('/timesheet')}
               style={{
                 marginLeft: 'auto', background: 'transparent',
@@ -355,6 +356,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               ].filter(a => !a.adminOnly || isAdmin).map(action => (
                 <button
                   key={action.label}
+                  data-testid={`btn-quick-action-${action.page.replace('/', '')}`}
                   onClick={() => onNavigate(action.page)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '9px',

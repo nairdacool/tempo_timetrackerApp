@@ -36,7 +36,7 @@ export default function ProjectBreakdownTable({ summaries }: ProjectBreakdownTab
             {billablePct}% billable · {totalHours}h total
           </div>
         </div>
-        <button style={{
+        <button data-testid="btn-group-by-team" style={{
           marginLeft: 'auto',
           padding: '6px 14px', borderRadius: '8px',
           background: 'transparent',
