@@ -319,30 +319,10 @@ export async function fetchReportData(startDate: string, endDate: string, includ
 
   if (!includeAllUsers) {
     query = query.eq('user_id', user.id)
-  } else {
-    // Scope to users in the admin's own organisation only
-    const { data: adminProfile } = await supabase
-      .from('profiles')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single()
-    const orgId = adminProfile?.organization_id
-    if (orgId) {
-      const { data: orgMembers } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('organization_id', orgId)
-      const orgUserIds = (orgMembers ?? []).map(m => m.id)
-      if (orgUserIds.length > 0) {
-        query = query.in('user_id', orgUserIds)
-      } else {
-        return [] // org has no members yet
-      }
-    } else {
-      // Admin not in an org — fall back to own entries only
-      query = query.eq('user_id', user.id)
-    }
   }
+  // When includeAllUsers=true (admin), no user_id filter is applied.
+  // The SELECT RLS policy allows admins to read all rows, so this
+  // returns the full org dataset without extra round-trips.
 
   const { data, error } = await query
   if (error) throw new Error(error.message)
