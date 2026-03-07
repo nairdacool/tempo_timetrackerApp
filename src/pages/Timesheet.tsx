@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useTimeEntries } from "../hooks/useTimeEntries";
 import WeekNavigator from "../components/ui/WeekNavigator";
 import EntryForm from "../components/ui/EntryForm";
@@ -67,9 +67,16 @@ interface TeamMember { id: string; name: string; initials: string; color: string
 
 export default function Timesheet() {
   const [weekOffset, setWeekOffset] = useState(0);
-  const currentMonday = new Date(todayMonday);
-  currentMonday.setDate(todayMonday.getDate() + weekOffset * 7);
-  const currentWeek = getWeekDates(currentMonday);
+  // useMemo ensures currentWeek.dates is the same array reference
+  // between renders as long as weekOffset hasn't changed. Without this,
+  // getWeekDates() returns a new array on every render, causing
+  // loadSilent's useCallback to recreate every render, which constantly
+  // restarts the polling setInterval before it ever fires.
+  const currentWeek = useMemo(() => {
+    const monday = new Date(todayMonday);
+    monday.setDate(todayMonday.getDate() + weekOffset * 7);
+    return getWeekDates(monday);
+  }, [weekOffset]);
   const { isMobile: _isMobile } = useBreakpoint();
   const { profile } = useAuth();
   const isAdmin = profile?.role === 'Admin';

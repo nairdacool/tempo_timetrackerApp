@@ -77,7 +77,8 @@ export function useTimeEntries({ weekDates, userId }: UseTimeEntriesOptions) {
     } finally {
       if (isInitial) setLoading(false)
     }
-  }, [weekDates, userId, weekStart, weekEnd]) // eslint-disable-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekDates.join(','), userId, weekStart, weekEnd])
 
   // Initial load
   useEffect(() => {
