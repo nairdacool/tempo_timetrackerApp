@@ -19,6 +19,7 @@ import Approvals from './pages/Approvals'
 import Team from './pages/Team'
 import Organizations from './pages/Organizations'
 import Settings from './pages/Settings'
+import HelpCenter from './pages/HelpCenter'
 
 function AuthenticatedApp() {
   const { user, loading, profile, signOut, isAdmin } = useAuth()
@@ -152,6 +153,7 @@ function AuthenticatedApp() {
         <Route path="/team"           element={<Team />} />
         <Route path="/organizations"  element={<Organizations />} />
         <Route path="/settings"       element={<Settings />} />
+        <Route path="/help"            element={<HelpCenter />} />
         <Route path="*"               element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>

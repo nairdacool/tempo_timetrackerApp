@@ -200,7 +200,7 @@ export default function Sidebar({
       <div style={{ padding: "8px 8px 0", borderTop: "1px solid var(--border)" }}>
         <button
           data-testid="btn-help-center"
-          onClick={() => window.open('/admin-manual.html', '_blank')}
+          onClick={() => onNavigate('/help')}
           style={{
             display: "flex",
             alignItems: "center",
