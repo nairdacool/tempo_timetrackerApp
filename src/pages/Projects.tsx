@@ -42,8 +42,10 @@ export default function Projects() {
       await addProject({
         name: project.name,
         client: project.client,
+        clientId: project.clientId,
         color: project.color,
         budgetHours: project.budgetHours,
+        billable: project.billable,
         status: project.status,
         organizationId: project.organizationId,
       });
@@ -60,6 +62,8 @@ export default function Projects() {
     budgetHours: number;
     billable: boolean;
     status: string;
+    clientId?: string;
+    clientName?: string;
   }) {
     if (!editingProject) return;
     await editProject(editingProject.id, updates);

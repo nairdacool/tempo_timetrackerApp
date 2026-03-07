@@ -1,5 +1,11 @@
 export type Page = 'dashboard' | 'timesheet' | 'projects' | 'reports' | 'approvals' | 'team' | 'organizations'
 
+export interface Client {
+  id:     string
+  name:   string
+  orgId?: string
+}
+
 export interface Organization {
   id:        string
   name:      string
@@ -31,7 +37,8 @@ export interface TeamMember {
 export interface Project {
   id: string
   name: string
-  client: string
+  client: string     // display name (resolved from clients table)
+  clientId?: string  // FK to clients.id
   color: string
   loggedHours: number
   budgetHours: number
@@ -51,6 +58,7 @@ export interface WeekBar {
 export interface ProjectSummary {
   name: string
   client: string
+  clientId?: string
   color: string
   hours: number
   budgetHours: number

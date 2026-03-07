@@ -1,12 +1,12 @@
 import { useState, useEffect, useContext } from 'react'
-import type { Project, Organization } from '../../types'
-import { fetchProjectMembers, addProjectMember, removeProjectMember, fetchOrganizations, addProjectToOrg, removeProjectFromOrg } from '../../lib/queries'
+import type { Project, Organization, Client } from '../../types'
+import { fetchProjectMembers, addProjectMember, removeProjectMember, fetchOrganizations, addProjectToOrg, removeProjectFromOrg, fetchClients, createClient } from '../../lib/queries'
 import { supabase } from '../../lib/supabase'
 import { AuthContext } from '../../context/AuthContextInstance'
 
 interface EditProjectModalProps {
   project:  Project
-  onSave:   (updates: { name: string; color: string; budgetHours: number; billable: boolean; status: string }) => Promise<void>
+  onSave:   (updates: { name: string; color: string; budgetHours: number; billable: boolean; status: string; clientId?: string; clientName?: string }) => Promise<void>
   onDelete: () => Promise<void>
   onClose:  () => void
 }
@@ -46,6 +46,12 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
   const [orgs,  setOrgs]  = useState<Organization[]>([])
   const [orgId, setOrgId] = useState<string>(project.organizationId ?? '')
 
+  // Client state
+  const [clients,          setClients]          = useState<Client[]>([])
+  const [clientId,         setClientId]         = useState<string>(project.clientId ?? '')
+  const [isCreatingClient, setIsCreatingClient] = useState(false)
+  const [newClientName,    setNewClientName]    = useState('')
+
   const isValid = name.trim().length > 0 && budgetHours > 0
 
   // Load current members + all profiles + organizations (admin only)
@@ -54,14 +60,16 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
     async function loadData() {
       setMemberLoading(true)
       try {
-        const [currentMembers, profilesRes, orgList] = await Promise.all([
+        const [currentMembers, profilesRes, orgList, clientList] = await Promise.all([
           fetchProjectMembers(project.id),
           supabase.from('profiles').select('id, full_name, initials, color, role').eq('is_active', true).order('full_name'),
           fetchOrganizations(),
+          fetchClients(),
         ])
         setMembers(currentMembers)
         setAllProfiles(profilesRes.data ?? [])
         setOrgs(orgList)
+        setClients(clientList)
       } catch (e) {
         console.error(e)
       } finally {
@@ -92,7 +100,18 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
     try {
       setSaving(true)
       setError(null)
-      await onSave({ name: name.trim(), color, budgetHours, billable, status })
+      let resolvedClientId   = clientId
+      let resolvedClientName = clients.find(c => c.id === clientId)?.name ?? project.client
+      if (isCreatingClient && newClientName.trim()) {
+        const created = await createClient(newClientName.trim())
+        resolvedClientId   = created.id
+        resolvedClientName = created.name
+      }
+      await onSave({
+        name: name.trim(), color, budgetHours, billable, status,
+        clientId:   resolvedClientId   || undefined,
+        clientName: resolvedClientName || undefined,
+      })
       // Update organization assignment
       if (orgId) {
         await addProjectToOrg(orgId, project.id)
@@ -150,7 +169,7 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
               Edit Project
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              {project.client}
+              {clients.find(c => c.id === clientId)?.name ?? project.client}
             </div>
           </div>
           <button
@@ -184,6 +203,40 @@ export default function EditProjectModal({ project, onSave, onDelete, onClose }:
               onChange={e => setName(e.target.value)}
               autoFocus style={inputStyle}
             />
+          </div>
+
+          {/* Client */}
+          <div>
+            <label style={labelStyle}>Client</label>
+            <select
+              data-testid="select-client"
+              value={isCreatingClient ? '__new__' : clientId}
+              onChange={e => {
+                if (e.target.value === '__new__') {
+                  setIsCreatingClient(true)
+                  setClientId('')
+                } else {
+                  setIsCreatingClient(false)
+                  setClientId(e.target.value)
+                }
+              }}
+              style={inputStyle}
+            >
+              <option value=''>— None (Internal) —</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              <option value='__new__'>＋ New Client…</option>
+            </select>
+            {isCreatingClient && (
+              <input
+                data-testid="input-new-client"
+                type="text"
+                placeholder="Client name"
+                value={newClientName}
+                onChange={e => setNewClientName(e.target.value)}
+                style={{ ...inputStyle, marginTop: '8px' }}
+                autoFocus
+              />
+            )}
           </div>
 
           {/* Color */}

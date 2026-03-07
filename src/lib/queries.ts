@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type { TimeEntry } from '../types'
-import type { Project, Organization } from '../types'
+import type { Project, Organization, Client } from '../types'
 
 // ===== PRIVATE HELPERS =====
 
@@ -22,7 +22,7 @@ async function fetchProjectsBase(activeOnly: boolean): Promise<Project[]> {
 
   let query = supabase
     .from('projects')
-    .select(`*, time_entries (duration_minutes)`)
+    .select(`*, time_entries (duration_minutes), clients (name)`)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
@@ -51,7 +51,8 @@ async function fetchProjectsBase(activeOnly: boolean): Promise<Project[]> {
     return {
       id: p.id,
       name: p.name,
-      client: p.client,
+      client: (p.clients as { name: string } | null)?.name ?? p.client ?? '',
+      clientId: p.client_id ?? undefined,
       color: p.color,
       loggedHours: Math.round((loggedMinutes / 60) * 10) / 10,
       budgetHours: p.budget_hours,
@@ -83,6 +84,7 @@ export async function createProject(
     .insert({
       name: project.name,
       client: project.client,
+      client_id: project.clientId ?? null,
       color: project.color,
       budget_hours: project.budgetHours,
       billable: project.billable,
@@ -605,6 +607,8 @@ export async function updateProject(id: string, updates: {
   budgetHours: number
   billable: boolean
   status: string
+  clientId?: string
+  clientName?: string
 }): Promise<void> {
   const { error } = await supabase
     .from('projects')
@@ -614,6 +618,8 @@ export async function updateProject(id: string, updates: {
       budget_hours: updates.budgetHours,
       billable: updates.billable,
       status: updates.status,
+      client_id: updates.clientId ?? null,
+      ...(updates.clientName !== undefined ? { client: updates.clientName } : {}),
     })
     .eq('id', id)
 
@@ -654,6 +660,27 @@ export async function updateProfile(updates: {
 export async function updatePassword(newPassword: string): Promise<void> {
   const { error } = await supabase.auth.updateUser({ password: newPassword })
   if (error) throw new Error(error.message)
+}
+
+// ===== CLIENTS =====
+
+export async function fetchClients(): Promise<Client[]> {
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id, name, org_id')
+    .order('name')
+  if (error) throw new Error(error.message)
+  return (data ?? []).map(c => ({ id: c.id, name: c.name, orgId: c.org_id ?? undefined }))
+}
+
+export async function createClient(name: string): Promise<Client> {
+  const { data, error } = await supabase
+    .from('clients')
+    .insert({ name })
+    .select('id, name, org_id')
+    .single()
+  if (error) throw new Error(error.message)
+  return { id: data.id, name: data.name, orgId: data.org_id ?? undefined }
 }
 
 // ===== ORGANIZATIONS =====

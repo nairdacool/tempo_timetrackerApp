@@ -37,7 +37,7 @@ export function useProjects() {
 
   async function editProject(
     id: string,
-    updates: { name: string; color: string; budgetHours: number; billable: boolean; status: string }
+    updates: { name: string; color: string; budgetHours: number; billable: boolean; status: string; clientId?: string; clientName?: string }
   ) {
     try {
       await updateProject(id, updates)
