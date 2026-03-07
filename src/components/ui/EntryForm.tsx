@@ -26,7 +26,7 @@ function formatDuration(mins: number): string {
 }
 
 export default function EntryForm({ projects, onAdd }: EntryFormProps) {
-  const [projectId,   setProjectId]   = useState(projects[0]?.id?.toString() ?? "");
+  const [projectId,   setProjectId]   = useState("");
   const [description, setDescription] = useState("");
   const [date,        setDate]        = useState(new Date().toISOString().slice(0, 10));
   const [startTime,   setStartTime]   = useState("09:00");
@@ -34,7 +34,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
   const { isMobile } = useBreakpoint();
   const mins     = calcMins(startTime, endTime);
   const duration = formatDuration(mins);
-  const isValid  = description.trim().length > 0 && mins > 0;
+  const isValid  = projectId !== "" && description.trim().length > 0 && mins > 0;
 
   const inputStyle: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
@@ -52,6 +52,7 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
   function handleAdd() {
     if (!isValid) return;
     onAdd({ projectId, description, date, startTime, endTime, durationMinutes: mins });
+    setProjectId("");
     setDescription("");
     setStartTime("09:00");
     setEndTime("10:00");
@@ -81,8 +82,12 @@ export default function EntryForm({ projects, onAdd }: EntryFormProps) {
             data-testid="select-project"
             value={projectId}
             onChange={e => setProjectId(e.target.value)}
-            style={inputStyle}
+            style={{
+              ...inputStyle,
+              color: projectId === "" ? 'var(--text-muted)' : 'var(--text)',
+            }}
           >
+            <option value="" disabled>— Select a project —</option>
             {projects.map(p => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
