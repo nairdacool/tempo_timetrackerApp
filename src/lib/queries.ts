@@ -512,34 +512,17 @@ export async function submitWeekForApproval(weekStart: string, weekEnd: string):
 }
 
 export async function updateApprovalStatus(id: string, status: 'approved' | 'rejected', reason?: string): Promise<void> {
-  const { data: approval, error: fetchErr } = await supabase
-    .from('approvals')
-    .select('user_id, week_start, week_end')
-    .eq('id', id)
-    .single()
-
-  if (fetchErr) throw new Error(fetchErr.message)
-
-  const { error: approvalErr } = await supabase
-    .from('approvals')
-    .update({
-      status,
-      reviewed_at: new Date().toISOString(),
-      ...(status === 'rejected' && reason ? { rejection_reason: reason } : { rejection_reason: null }),
-    })
-    .eq('id', id)
-
-  if (approvalErr) throw new Error(approvalErr.message)
-
-  const { error: entriesErr } = await supabase
-    .from('time_entries')
-    .update({ status })
-    .eq('user_id', approval.user_id)
-    .gte('date', approval.week_start)
-    .lte('date', approval.week_end)
-    .eq('status', 'pending')
-
-  if (entriesErr) throw new Error(entriesErr.message)
+  // Uses a SECURITY DEFINER Postgres function so the admin's JWT can update
+  // another user's time_entries without being blocked by the SELECT RLS policy.
+  // (Without SECURITY DEFINER the UPDATE silently matches 0 rows because the
+  // SELECT row-filter prevents the admin from seeing the developer's entries,
+  // leaving them permanently stuck on 'pending'.)
+  const { error } = await supabase.rpc('update_approval_status', {
+    p_approval_id: id,
+    p_status:      status,
+    p_reason:      reason ?? null,
+  })
+  if (error) throw new Error(error.message)
 }
 
 // ===== PROJECT MEMBERS =====
