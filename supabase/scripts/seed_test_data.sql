@@ -18,8 +18,8 @@
 -- ⚠️  Replace these with the actual UUIDs from your auth users
 DO $$
 DECLARE
-  admin_id  uuid := 'aaaaaaaa-0000-0000-0000-000000000001'; -- replace me
-  dev_id    uuid := 'bbbbbbbb-0000-0000-0000-000000000002'; -- replace me
+  admin_id  uuid := 'd3e33e24-9349-4bd0-847f-ed3abb77de5e'; -- replace me
+  dev_id    uuid := '63147629-605b-4ada-84b5-a8ded5c3c5ff'; -- replace me
 
   -- Fixed org UUID — matches the one pre-created by reset_data.sql
   org_id    uuid := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
@@ -51,10 +51,9 @@ BEGIN
   INSERT INTO public.projects (id, name, client, color, budget_hours, status, billable, created_by)
   VALUES
     (gen_random_uuid(), 'Alpha Project', 'Client A', '#c8602a', 80,  'active',  true,  admin_id),
-    (gen_random_uuid(), 'Beta Project',  'Client B', '#2a7a4f', 120, 'active',  false, admin_id)
-  RETURNING id INTO proj1_id;
+    (gen_random_uuid(), 'Beta Project',  'Client B', '#2a7a4f', 120, 'active',  false, admin_id);
 
-  -- Re-fetch project IDs for use in entries
+  -- Fetch project IDs for use in entries
   SELECT id INTO proj1_id FROM public.projects WHERE name = 'Alpha Project';
   SELECT id INTO proj2_id FROM public.projects WHERE name = 'Beta Project';
 
