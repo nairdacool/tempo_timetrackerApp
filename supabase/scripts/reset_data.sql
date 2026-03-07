@@ -24,19 +24,21 @@ DELETE FROM public.projects;
 DELETE FROM public.profiles;
 DELETE FROM public.organizations;
 
--- Verify all tables are empty
-SELECT 'organizations'  AS "table", COUNT(*) AS rows FROM public.organizations
-UNION ALL
-SELECT 'profiles',      COUNT(*) FROM public.profiles
-UNION ALL
-SELECT 'projects',      COUNT(*) FROM public.projects
-UNION ALL
-SELECT 'project_members', COUNT(*) FROM public.project_members
-UNION ALL
-SELECT 'time_entries',  COUNT(*) FROM public.time_entries
-UNION ALL
-SELECT 'approvals',     COUNT(*) FROM public.approvals
+-- Pre-create the test organization with a fixed UUID.
+-- This is required so the auth trigger (handle_new_user) can create
+-- a profile row when you add auth users in the Supabase dashboard.
+INSERT INTO public.organizations (id, name)
+VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Test Corp');
+
+-- Verify state
+SELECT 'organizations'    AS "table", COUNT(*) AS rows FROM public.organizations
+UNION ALL SELECT 'profiles',          COUNT(*) FROM public.profiles
+UNION ALL SELECT 'projects',          COUNT(*) FROM public.projects
+UNION ALL SELECT 'project_members',   COUNT(*) FROM public.project_members
+UNION ALL SELECT 'time_entries',      COUNT(*) FROM public.time_entries
+UNION ALL SELECT 'approvals',         COUNT(*) FROM public.approvals
 ORDER BY "table";
+-- Expected: organizations=1, everything else=0
 
 -- ============================================================
 -- OPTIONAL: Delete Auth users via service-role API

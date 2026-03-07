@@ -21,21 +21,31 @@ DECLARE
   admin_id  uuid := 'aaaaaaaa-0000-0000-0000-000000000001'; -- replace me
   dev_id    uuid := 'bbbbbbbb-0000-0000-0000-000000000002'; -- replace me
 
-  org_id    uuid;
+  -- Fixed org UUID — matches the one pre-created by reset_data.sql
+  org_id    uuid := 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
   proj1_id  uuid;
   proj2_id  uuid;
 BEGIN
 
-  -- Organization
-  INSERT INTO public.organizations (id, name)
-  VALUES (gen_random_uuid(), 'Test Corp')
-  RETURNING id INTO org_id;
+  -- The organization was already created by reset_data.sql.
+  -- Just update its name in case it was changed.
+  UPDATE public.organizations SET name = 'Test Corp'
+  WHERE id = org_id;
 
-  -- Profiles
+  -- Profiles: use ON CONFLICT DO UPDATE because the auth trigger
+  -- (handle_new_user) may have already inserted a stub row when
+  -- the auth users were created in the Supabase dashboard.
   INSERT INTO public.profiles (id, full_name, initials, role, color, organization_id, is_active)
   VALUES
     (admin_id, 'Admin User',     'AU', 'Admin',     '#c8602a', org_id, true),
-    (dev_id,   'Developer User', 'DU', 'Developer', '#2a5fa8', org_id, true);
+    (dev_id,   'Developer User', 'DU', 'Developer', '#2a5fa8', org_id, true)
+  ON CONFLICT (id) DO UPDATE SET
+    full_name       = EXCLUDED.full_name,
+    initials        = EXCLUDED.initials,
+    role            = EXCLUDED.role,
+    color           = EXCLUDED.color,
+    organization_id = EXCLUDED.organization_id,
+    is_active       = EXCLUDED.is_active;
 
   -- Projects
   INSERT INTO public.projects (id, name, client, color, budget_hours, status, billable, created_by)
