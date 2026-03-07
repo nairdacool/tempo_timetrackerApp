@@ -26,6 +26,7 @@ A full-stack time tracking web application built with React, TypeScript, and Sup
 - **Organizations** — Multi-org support; admins can manage their organization
 - **In-app notifications** — Toast notifications when a user's timesheet is approved or rejected, powered by polling (works on any page)
 - **Settings** — Users can update their name, initials, avatar color (12 presets + custom picker), and change their password
+- **Help Center** — In-app user manual embedded via Vite `?raw` import and rendered in an `<iframe srcdoc>`. Accessible from the sidebar footer. Automatically matches the app's dark/light theme via `prefers-color-scheme`. TOC anchor navigation is intercepted to prevent parent-frame routing conflicts
 - **URL persistence** — Refreshing the app keeps the user on the same page. Admin-only routes hold the loading screen until the profile resolves so the admin guard never incorrectly redirects
 - **Adaptive theme** — Automatic dark/light mode via `prefers-color-scheme`. All colors are CSS variables
 - **Mobile layout** — Responsive design with a bottom navigation bar on small screens. Fully usable on phone
@@ -105,7 +106,8 @@ src/
 │   ├── Approvals.tsx
 │   ├── Team.tsx
 │   ├── Organizations.tsx
-│   └── Settings.tsx           # Profile (name, avatar color) + password change
+│   ├── Settings.tsx           # Profile (name, avatar color) + password change
+│   └── HelpCenter.tsx         # Embeds admin-manual.html via Vite raw import + iframe srcdoc
 ├── types.ts                   # Shared TypeScript interfaces
 ├── App.tsx                    # Root with auth-protected routing + notification polling
 └── index.css                  # Design tokens + global styles
@@ -113,6 +115,8 @@ supabase/
 ├── functions/
 │   └── invite-member/         # Edge Function — sends invite email via Resend
 │       └── index.ts
+public/
+└── admin-manual.html          # Standalone user manual — imported raw by HelpCenter.tsx
 ├── migrations/                # Incremental DB migrations (apply after initial schema)
 │   ├── 20260305000000_protect_approved_entries.sql
 │   ├── 20260306000000_approvals_rejection_reason.sql
@@ -448,7 +452,9 @@ In your Supabase dashboard go to **Authentication → URL Configuration**:
 
 **Admin-aware data fetching** — the admin `isAdmin` flag is derived from `profile`, which is fetched asynchronously after the session resolves. All hooks that branch on `isAdmin` wait for `profile !== null` before making their initial fetch, preventing the stale-`false` first fetch that would return the wrong (personal-only) dataset.
 
-**CSS variables for theming** — all colors, spacing, and typography are CSS custom properties in `index.css`. Dark/light mode uses `prefers-color-scheme` — no JS required.
+**CSS variables for theming** — all colors, spacing, and typography are CSS custom properties in `index.css`. Dark/light mode uses `prefers-color-scheme` — no JS required. The `admin-manual.html` file uses the same CSS variable naming convention and the same `prefers-color-scheme` media query, so the manual automatically matches the app theme with no JavaScript.
+
+**In-app help center without server routing** — `HelpCenter.tsx` imports `admin-manual.html` as a raw string via Vite's `?raw` loader and injects it into an `<iframe srcdoc>`. This sidesteps the Vercel SPA catch-all rewrite that would otherwise intercept direct file requests and return `index.html`. TOC anchor clicks inside the iframe are intercepted by an inline script (`e.preventDefault()` + `scrollIntoView`) to prevent them from navigating the parent React app.
 
 **Strict RLS** — every table has Row Level Security enabled. Users can only access their own data. Admins have explicit policies granting broader access. Frontend role checks are UI-only conveniences; the database enforces all real security.
 
