@@ -25,10 +25,41 @@ DELETE FROM public.profiles;
 DELETE FROM public.organizations;
 
 -- Pre-create the test organization with a fixed UUID.
--- This is required so the auth trigger (handle_new_user) can create
--- a profile row when you add auth users in the Supabase dashboard.
 INSERT INTO public.organizations (id, name)
 VALUES ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Test Corp');
+
+-- Patch the auth trigger so it falls back to the test org when no
+-- organization metadata is provided (i.e. users created via the dashboard).
+-- This replaces the function temporarily for test use.
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  org_id   uuid;
+  org_name text;
+BEGIN
+  org_name := coalesce(new.raw_user_meta_data->>'organization', '');
+
+  IF org_name <> '' THEN
+    INSERT INTO organizations (name) VALUES (org_name) RETURNING id INTO org_id;
+  END IF;
+
+  -- Fallback: use the test org if no org was resolved
+  IF org_id IS NULL THEN
+    SELECT id INTO org_id FROM public.organizations LIMIT 1;
+  END IF;
+
+  INSERT INTO profiles (id, full_name, initials, role, color, organization_id)
+  VALUES (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', 'New User'),
+    coalesce(new.raw_user_meta_data->>'initials',  'NU'),
+    coalesce(new.raw_user_meta_data->>'role',       'Developer'),
+    coalesce(new.raw_user_meta_data->>'color',      '#c8602a'),
+    org_id
+  );
+  RETURN new;
+END;
+$$;
 
 -- Verify state
 SELECT 'organizations'    AS "table", COUNT(*) AS rows FROM public.organizations
