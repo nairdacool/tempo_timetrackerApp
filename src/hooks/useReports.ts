@@ -177,6 +177,7 @@ function buildDetailEntries(entries: any[]): DetailEntry[] {
     date:        e.date,
     member:      e.profile?.full_name ?? 'Me',
     project:     e.projects?.name     ?? 'Unknown',
+    client:      (e.projects?.clients as { name: string } | null)?.name ?? e.projects?.client ?? 'Internal',
     description: e.description        ?? '',
     hours:       Math.round((e.duration_minutes / 60) * 100) / 100,
   }))

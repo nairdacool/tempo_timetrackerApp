@@ -92,6 +92,7 @@ export default function Reports() {
       Date: e.date,
       Member: e.member,
       Project: e.project,
+      Client: e.client,
       Description: e.description,
       Hours: e.hours,
     }));

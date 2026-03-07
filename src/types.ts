@@ -79,6 +79,7 @@ export interface DetailEntry {
   date:        string
   member:      string
   project:     string
+  client:      string
   description: string
   hours:       number
 }

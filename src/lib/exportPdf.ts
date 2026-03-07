@@ -318,11 +318,12 @@ export function downloadPdf(opts: ReportPdfOptions) {
     autoTable(doc, {
       startY: y,
       margin: { left: margin, right: margin },
-      head: [['Date', 'Member', 'Project', 'Description', 'Hours']],
+      head: [['Date', 'Member', 'Project', 'Client', 'Description', 'Hours']],
       body: opts.detailEntries.map(e => [
         e.date,
         e.member,
         e.project,
+        e.client || '—',
         e.description || '—',
         `${e.hours}h`,
       ]),
@@ -331,7 +332,7 @@ export function downloadPdf(opts: ReportPdfOptions) {
       bodyStyles:         { fontSize: 7.5, textColor: DARK },
       columnStyles:       {
         0: { cellWidth: 22 },
-        4: { halign: 'right', cellWidth: 16 },
+        5: { halign: 'right', cellWidth: 16 },
       },
       tableLineColor:  BORDER,
       tableLineWidth:  0.2,
