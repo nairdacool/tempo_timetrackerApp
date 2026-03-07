@@ -14,10 +14,10 @@ interface DashboardProps {
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const [refreshKey, setRefreshKey] = useState(0)
-  const { data, loading, error } = useDashboard(refreshKey, isAdmin)
   const { isMobile } = useBreakpoint()
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'Admin'
+  const { data, loading, error } = useDashboard(refreshKey, isAdmin)
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
 
   if (loading) return (
