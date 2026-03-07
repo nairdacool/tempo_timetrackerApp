@@ -1431,6 +1431,15 @@
 </main>
 
 <script>
+  // Intercept TOC anchor clicks — prevent parent-frame navigation inside srcdoc iframe
+  document.querySelectorAll('#toc a[href^="#"]').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(link.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
   // Highlight active TOC item on scroll
   const sections = document.querySelectorAll('section[id]');
   const tocLinks = document.querySelectorAll('#toc a[href]');
