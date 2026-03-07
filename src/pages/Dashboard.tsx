@@ -17,7 +17,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const { isMobile } = useBreakpoint()
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'Admin'
-  const { data, loading, error } = useDashboard(refreshKey, isAdmin)
+  const { data, loading, error } = useDashboard(refreshKey, isAdmin, profile !== null)
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null)
 
   if (loading) return (

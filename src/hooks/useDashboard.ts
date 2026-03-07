@@ -36,7 +36,7 @@ interface DashboardData {
   projects: Project[]
 }
 
-export function useDashboard(refreshKey = 0, isAdmin = false) {
+export function useDashboard(refreshKey = 0, isAdmin = false, ready = true) {
   const [data,    setData]    = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState<string | null>(null)
@@ -83,8 +83,9 @@ export function useDashboard(refreshKey = 0, isAdmin = false) {
   }, [isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    if (!ready) return
     load()
-  }, [load, refreshKey])
+  }, [load, refreshKey, ready])
 
   return { data, loading, error }
 }
