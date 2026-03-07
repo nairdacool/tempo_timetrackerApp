@@ -322,11 +322,12 @@ interface RawReportEntry {
   projects: {
     name: string
     client: string
+    client_id: string | null
     color: string
     budget_hours: number | null
     billable: boolean | null
     status: string
-    billable?: boolean
+    clients: { name: string } | null
   } | null
   profile?: { full_name: string; initials: string; color: string } | null
 }
@@ -337,7 +338,7 @@ export async function fetchReportData(startDate: string, endDate: string, includ
 
   let query = supabase
     .from('time_entries')
-    .select(`*, projects (name, client, color, budget_hours, billable, status)`)
+    .select(`*, projects (name, client, client_id, color, budget_hours, billable, status, clients(name))`)
     .gte('date', startDate)
     .lte('date', endDate)
     .order('date', { ascending: true })

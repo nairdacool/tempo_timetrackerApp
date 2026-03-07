@@ -2,10 +2,18 @@ import { useState, useEffect } from 'react'
 import type { ReportPeriod, WeekBar, ProjectSummary, MemberSummary, DetailEntry } from '../types'
 import { fetchReportData } from '../lib/queries'
 
+export interface ClientSummary {
+  name:        string
+  hours:       number
+  projects:    number
+  billableHrs: number
+}
+
 interface ReportsData {
   bars:            WeekBar[]
   summaries:       ProjectSummary[]
   memberSummaries: MemberSummary[]
+  clientSummaries: ClientSummary[]
   detailEntries:   DetailEntry[]
   periodLabel:     string
 }
@@ -91,13 +99,16 @@ function buildProjectSummaries(entries: any[]): ProjectSummary[] {
     const proj = e.projects
 
     if (!map.has(key)) {
+      // Resolve client name: prefer FK join (clients.name), fall back to legacy text column
+      const clientName = (proj?.clients as { name: string } | null)?.name ?? proj?.client ?? 'Internal'
       map.set(key, {
         name:        proj?.name        ?? 'Unknown',
-        client:      proj?.client      ?? 'Internal',
+        client:      clientName,
+        clientId:    proj?.client_id   ?? undefined,
         color:       proj?.color       ?? '#c8602a',
         hours:       0,
-        budgetHours: proj?.budget_hours ?? 0,   // 0 = no budget set
-        billable:    proj?.billable    ?? true,  // default all projects to billable
+        budgetHours: proj?.budget_hours ?? 0,
+        billable:    proj?.billable    ?? true,
         status:      proj?.status      ?? 'active',
       })
     }
@@ -107,6 +118,28 @@ function buildProjectSummaries(entries: any[]): ProjectSummary[] {
   }
 
   return Array.from(map.values()).sort((a, b) => b.hours - a.hours)
+}
+
+// Groups entries by client and returns ClientSummary[]
+function buildClientSummaries(entries: any[]): ClientSummary[] {
+  const map = new Map<string, ClientSummary & { projectIds: Set<string> }>()
+
+  for (const e of entries) {
+    const proj = e.projects
+    const clientName = (proj?.clients as { name: string } | null)?.name ?? proj?.client ?? 'Internal'
+
+    if (!map.has(clientName)) {
+      map.set(clientName, { name: clientName, hours: 0, projects: 0, billableHrs: 0, projectIds: new Set() })
+    }
+    const c = map.get(clientName)!
+    c.hours       = Math.round((c.hours * 60 + e.duration_minutes) / 60 * 10) / 10
+    c.billableHrs = proj?.billable ? Math.round((c.billableHrs * 60 + e.duration_minutes) / 60 * 10) / 10 : c.billableHrs
+    if (e.project_id) c.projectIds.add(e.project_id)
+  }
+
+  return Array.from(map.values())
+    .map(({ projectIds, ...rest }) => ({ ...rest, projects: projectIds.size }))
+    .sort((a, b) => b.hours - a.hours)
 }
 
 function buildMemberSummaries(entries: any[]): MemberSummary[] {
@@ -175,6 +208,7 @@ export function useReports(period: ReportPeriod, customFrom: string, customTo: s
           bars:            buildWeekBars(entries, start, end),
           summaries:       buildProjectSummaries(entries),
           memberSummaries: buildMemberSummaries(entries),
+          clientSummaries: buildClientSummaries(entries),
           detailEntries:   buildDetailEntries(entries),
           periodLabel:     label,
         })

@@ -27,6 +27,7 @@ export default function Projects() {
     ...Array.from(new Set(projects.map((p) => p.client))),
   ];
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'byClient'>('grid');
 
   const filtered = visibleProjects.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
@@ -275,6 +276,26 @@ export default function Projects() {
             + New Project
           </button>
         )}
+
+        {/* View toggle */}
+        <div style={{ display: 'flex', gap: 2, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, marginLeft: isAdmin ? 0 : 'auto' }}>
+          {(['grid', 'byClient'] as const).map(mode => (
+            <button
+              key={mode}
+              data-testid={`btn-view-${mode}`}
+              onClick={() => setViewMode(mode)}
+              title={mode === 'grid' ? 'Grid view' : 'Group by client'}
+              style={{
+                padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                background: viewMode === mode ? 'var(--accent)' : 'transparent',
+                color: viewMode === mode ? 'white' : 'var(--text-muted)',
+                fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+              }}
+            >
+              {mode === 'grid' ? '⊞' : '≡'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Empty state */}
@@ -298,7 +319,57 @@ export default function Projects() {
         </div>
       )}
 
-      {/* Grid */}
+      {/* Grid or By-Client view */}
+      {viewMode === 'byClient' ? (
+        // Group projects under client name headers
+        (() => {
+          const groups = Array.from(
+            filtered.reduce((map, p) => {
+              const key = p.client || 'Internal'
+              if (!map.has(key)) map.set(key, [])
+              map.get(key)!.push(p)
+              return map
+            }, new Map<string, Project[]>())
+          )
+          if (groups.length === 0) return null
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              {groups.map(([clientName, clientProjects]) => (
+                <div key={clientName}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+                    textTransform: 'uppercase', letterSpacing: '0.5px',
+                    marginBottom: 12, paddingBottom: 8,
+                    borderBottom: '1px solid var(--border)',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                  }}>
+                    {clientName}
+                    <span style={{ fontWeight: 500, color: 'var(--text-placeholder)', fontSize: 11, textTransform: 'none', letterSpacing: 0 }}>
+                      {clientProjects.length} project{clientProjects.length !== 1 ? 's' : ''}
+                      {' · '}{clientProjects.reduce((s, p) => s + p.loggedHours, 0)}h logged
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gap: 14,
+                  }}>
+                    {clientProjects.map(project => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        onClick={isAdmin ? setEditingProject : () => {}}
+                        readOnly={!isAdmin}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        })()
+      ) : (
+        // Default grid view
       <div
         data-testid="project-grid"
         style={{
@@ -354,6 +425,7 @@ export default function Projects() {
           <div style={{ fontSize: "13px", fontWeight: 600 }}>New Project</div>
         </div>}
       </div>
+      )} {/* end viewMode ternary */}
 
       {/* Modal */}
       {showModal && (

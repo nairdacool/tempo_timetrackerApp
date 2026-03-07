@@ -14,7 +14,7 @@ export default function Reports() {
   const [period, setPeriod] = useState<ReportPeriod>("this-month");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [activeTab, setActiveTab] = useState<'project' | 'member'>('project');
+  const [activeTab, setActiveTab] = useState<'project' | 'member' | 'client'>('project');
 
   // Only pass dates to hook when Apply is clicked
   const [appliedFrom, setAppliedFrom] = useState("");
@@ -378,7 +378,7 @@ export default function Reports() {
               {/* Tab bar — admin only */}
               {isAdmin && (
                 <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
-                  {(['project', 'member'] as const).map(tab => (
+                  {(['project', 'member', 'client'] as const).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
@@ -390,7 +390,7 @@ export default function Reports() {
                         marginBottom: -1,
                       }}
                     >
-                      {tab === 'project' ? 'By Project' : 'By Member'}
+                      {tab === 'project' ? 'By Project' : tab === 'member' ? 'By Member' : 'By Client'}
                     </button>
                   ))}
                 </div>
@@ -400,6 +400,57 @@ export default function Reports() {
 
               {activeTab === 'project' || !isAdmin ? (
                 <ProjectBreakdownTable summaries={data.summaries} />
+              ) : activeTab === 'client' ? (
+                /* By Client table */
+                <div style={{
+                  background: 'var(--bg-card)', border: '1px solid var(--border)',
+                  borderRadius: 12, overflow: 'hidden',
+                }}>
+                  <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Hours by Client</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                      {data.clientSummaries.length} client{data.clientSummaries.length !== 1 ? 's' : ''} · {totalHours}h total
+                    </div>
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-subtle)' }}>
+                        {['Client', 'Projects', 'Total Hours', 'Billable', 'Share'].map(col => (
+                          <th key={col} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.clientSummaries.map((c, i) => {
+                        const share = totalHours > 0 ? Math.round((c.hours / totalHours) * 100) : 0
+                        const billablePct = c.hours > 0 ? Math.round((c.billableHrs / c.hours) * 100) : 0
+                        return (
+                          <tr key={c.name} style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}>
+                            <td style={{ padding: '13px 16px' }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{c.name}</div>
+                            </td>
+                            <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--text-muted)' }}>{c.projects}</td>
+                            <td style={{ padding: '13px 16px', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{c.hours}h</td>
+                            <td style={{ padding: '13px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
+                              {c.billableHrs}h
+                              <span style={{ marginLeft: 6, fontSize: 11, color: billablePct >= 80 ? 'var(--green)' : 'var(--text-muted)' }}>
+                                ({billablePct}%)
+                              </span>
+                            </td>
+                            <td style={{ padding: '13px 16px', minWidth: 140 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ flex: 1, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                                  <div style={{ width: `${share}%`, height: '100%', background: 'var(--accent)', borderRadius: 3 }} />
+                                </div>
+                                <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 32 }}>{share}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 /* By Member table */
                 <div style={{
