@@ -15,16 +15,18 @@ A full-stack time tracking web application built with React, TypeScript, and Sup
 ## Features
 
 - **Authentication** — Email/password login, signup, forgot password reset, and team invite flow via Supabase Auth
-- **Dashboard** — Live stats (week hours, month hours, active projects, pending approvals), recent entries, week summary chart and quick actions
+- **Dashboard** — Live stats (week hours, month hours, active projects, pending approvals), recent entries, week summary chart and quick actions. Admins see org-wide team totals; members see their own personal stats
 - **Timesheet** — Log time entries by project, navigate weeks, submit for approval. Entries update live when an admin approves or rejects them
 - **Timer** — Persistent floating timer widget with project and note fields. Survives page refreshes via `localStorage`
-- **Projects** — Create and manage projects with client, color, budget tracking, progress bars, and billable flag. Soft-delete support
-- **Reports** — Visualize hours by week/month/custom range, project breakdown table. Export to CSV and PDF
-- **Approvals** — Admin workflow: view submitted timesheets, approve or reject with an optional reason. Supports resubmission after rejection
-- **Team** — Invite members by email (Supabase invite + Resend email), edit roles, deactivate/reactivate accounts, sort and filter
+- **Projects** — Create and manage projects with client, color, budget tracking, progress bars, and billable flag. Soft-delete support. Toggle between Grid and By Client grouped view
+- **Clients** — First-class `clients` table. Project modals have a client dropdown with inline new-client creation. Reports include a By Client tab (admin) and detailed exports include a Client column
+- **Reports** — Visualize hours by week/month/custom range, project breakdown table. Admins see org-wide data across all members with By Project, By Member, and By Client tabs. Export to CSV and PDF (detail report includes Member, Project, Client, Description, Hours)
+- **Approvals** — Admin workflow: view submitted timesheets, approve or reject with an optional reason. Supports resubmission after rejection. Status updates use a `SECURITY DEFINER` RPC to reliably update all matching entries regardless of RLS row visibility
+- **Team** — Invite members by email (Supabase invite + Resend email), edit roles/name/initials/avatar color, deactivate/reactivate accounts, sort and filter
 - **Organizations** — Multi-org support; admins can manage their organization
 - **In-app notifications** — Toast notifications when a user's timesheet is approved or rejected, powered by polling (works on any page)
 - **Settings** — Users can update their name, initials, avatar color (12 presets + custom picker), and change their password
+- **URL persistence** — Refreshing the app keeps the user on the same page. Admin-only routes hold the loading screen until the profile resolves so the admin guard never incorrectly redirects
 - **Adaptive theme** — Automatic dark/light mode via `prefers-color-scheme`. All colors are CSS variables
 - **Mobile layout** — Responsive design with a bottom navigation bar on small screens. Fully usable on phone
 
@@ -66,7 +68,8 @@ src/
 ├── lib/
 │   ├── supabase.ts            # Supabase client (anon key only)
 │   ├── queries.ts             # All database query functions
-│   └── exportCsv.ts           # CSV export helper
+│   ├── exportCsv.ts           # CSV export helper
+│   └── exportPdf.ts           # PDF export (summary + detail with Client column)
 ├── components/
 │   ├── layout/
 │   │   ├── Layout.tsx         # App shell with topbar + page routing
@@ -110,10 +113,16 @@ supabase/
 ├── functions/
 │   └── invite-member/         # Edge Function — sends invite email via Resend
 │       └── index.ts
-└── migrations/                # Incremental DB migrations (apply after initial schema)
-    ├── 20260305000000_protect_approved_entries.sql
-    ├── 20260306000000_approvals_rejection_reason.sql
-    └── 20260306000001_projects_billable.sql
+├── migrations/                # Incremental DB migrations (apply after initial schema)
+│   ├── 20260305000000_protect_approved_entries.sql
+│   ├── 20260306000000_approvals_rejection_reason.sql
+│   ├── 20260306000001_projects_billable.sql
+│   ├── 20260307000001_clients_table.sql
+│   ├── 20260307000003_update_approval_status_fn.sql
+│   └── 20260307000004_admin_select_time_entries.sql
+└── scripts/
+    ├── reset_data.sql         # Wipes all app data for automation testing
+    └── seed_test_data.sql     # Seeds consistent baseline test data
 ```
 
 ---
@@ -364,6 +373,9 @@ supabase db push
 | `20260305000000_protect_approved_entries.sql` | RLS policies preventing non-admins from editing or deleting approved entries |
 | `20260306000000_approvals_rejection_reason.sql` | Adds `rejection_reason TEXT` column to `approvals` |
 | `20260306000001_projects_billable.sql` | Adds `billable BOOLEAN DEFAULT TRUE` column to `projects` |
+| `20260307000001_clients_table.sql` | Creates `clients` table, RLS policies, migrates existing `projects.client` text values to FK rows, adds `client_id` FK column to `projects` |
+| `20260307000003_update_approval_status_fn.sql` | Creates `update_approval_status` SECURITY DEFINER RPC — atomically updates `approvals` + `time_entries` bypassing RLS so admin approvals reliably propagate |
+| `20260307000004_admin_select_time_entries.sql` | Adds admin bypass to the `time_entries` SELECT policy so admins can read all entries (required for org-wide reports and dashboard) |
 
 All migrations use `IF NOT EXISTS` guards so they are safe to re-run against an existing database.
 
@@ -428,9 +440,13 @@ In your Supabase dashboard go to **Authentication → URL Configuration**:
 
 **Custom hooks per page** — each page has a dedicated hook (`useProjects`, `useTimeEntries`, etc.) handling loading, error, and data state. Pages stay declarative.
 
-**Polling over Supabase Realtime** — live updates (entry status changes, admin pending count, approval notifications) use `setInterval` polling rather than `postgres_changes` subscriptions. This avoids the `REPLICA IDENTITY FULL` and RLS publication requirements that cause silent delivery failures, and works reliably with any RLS configuration.
+**Polling over Supabase Realtime** — live updates (entry status changes, admin pending count, approval notifications) use `setInterval` polling rather than `postgres_changes` subscriptions. This avoids the `REPLICA IDENTITY FULL` and RLS publication requirements that cause silent delivery failures, and works reliably with any RLS configuration. `weekDates` is memoized in `Timesheet` so the polling interval is stable and never restarted unnecessarily.
 
 **Optimistic updates** — approval status changes update the UI instantly before the DB confirms, with rollback on failure.
+
+**SECURITY DEFINER RPC for approval status** — `updateApprovalStatus` calls `supabase.rpc('update_approval_status')` rather than doing multi-step client-side updates. The RLS SELECT policy (which gates rows visible to UPDATE) blocked admins from updating other users' entries. The server-side function bypasses RLS while still validating the caller is an Admin.
+
+**Admin-aware data fetching** — the admin `isAdmin` flag is derived from `profile`, which is fetched asynchronously after the session resolves. All hooks that branch on `isAdmin` wait for `profile !== null` before making their initial fetch, preventing the stale-`false` first fetch that would return the wrong (personal-only) dataset.
 
 **CSS variables for theming** — all colors, spacing, and typography are CSS custom properties in `index.css`. Dark/light mode uses `prefers-color-scheme` — no JS required.
 
