@@ -19,6 +19,10 @@ interface RecentEntry {
   endTime: string
   duration: string
   status: 'approved' | 'pending' | 'draft'
+  memberName:     string | null
+  memberInitials: string | null
+  memberColor:    string | null
+  isOwn: boolean
 }
 
 interface DashboardData {
@@ -32,7 +36,7 @@ interface DashboardData {
   projects: Project[]
 }
 
-export function useDashboard(refreshKey = 0) {
+export function useDashboard(refreshKey = 0, isAdmin = false) {
   const [data,    setData]    = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState<string | null>(null)
@@ -43,8 +47,8 @@ export function useDashboard(refreshKey = 0) {
       setError(null)
 
       const [stats, recent, projects] = await Promise.all([
-        fetchDashboardStats(),
-        fetchRecentEntries(),
+        fetchDashboardStats(isAdmin),
+        fetchRecentEntries(isAdmin),
         fetchActiveProjects(),
       ])
 
@@ -76,7 +80,7 @@ export function useDashboard(refreshKey = 0) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isAdmin]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     load()

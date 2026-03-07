@@ -14,7 +14,7 @@ interface DashboardProps {
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const [refreshKey, setRefreshKey] = useState(0)
-  const { data, loading, error } = useDashboard(refreshKey)
+  const { data, loading, error } = useDashboard(refreshKey, isAdmin)
   const { isMobile } = useBreakpoint()
   const { profile } = useAuth()
   const isAdmin = profile?.role === 'Admin'
@@ -65,7 +65,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         marginBottom: '20px',
       }}>
         <StatCard
-          label="This Week"
+          label={isAdmin ? 'Team This Week' : 'This Week'}
           value={`${d.weekHours}h`}
           delta={
             d.lastWeekHours === 0 && d.weekHours === 0
@@ -79,7 +79,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           trend={d.weekHours > d.lastWeekHours ? 'up' : d.weekHours < d.lastWeekHours ? 'down' : 'neutral'}
         />
         <StatCard
-          label="This Month"
+          label={isAdmin ? 'Team This Month' : 'This Month'}
           value={`${d.monthHours}h`}
           delta={d.monthHours > 0 ? `↑ ${d.monthHours}h logged` : 'No entries yet'}
           trend={d.monthHours > 0 ? 'up' : 'neutral'}
@@ -121,8 +121,12 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             display: 'flex', alignItems: 'center',
           }}>
             <div>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>Recent Time Entries</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Your latest logged work</div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>
+                {isAdmin ? 'Recent Team Entries' : 'Recent Time Entries'}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                {isAdmin ? 'Latest logged work across the team' : 'Your latest logged work'}
+              </div>
             </div>
             <button
               data-testid="btn-view-all-entries"
@@ -219,7 +223,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-subtle)' }}>
-                  {['Project', 'Description', 'Date', 'Duration', 'Status'].map(col => (
+                  {(isAdmin ? ['Member', 'Project', 'Description', 'Date', 'Duration', 'Status'] : ['Project', 'Description', 'Date', 'Duration', 'Status']).map(col => (
                     <th key={col} style={{
                       padding: '10px 16px', textAlign: 'left',
                       fontSize: '11px', fontWeight: 700,
@@ -234,28 +238,46 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 {d.recentEntries.map(entry => {
                   const s = statusStyles[entry.status as keyof typeof statusStyles]
                     ?? { bg: 'var(--bg-subtle)', color: 'var(--text-muted)', label: entry.status }
+                  const canEdit = isAdmin ? entry.isOwn : entry.status !== 'approved'
                   return (
                     <tr
                       key={entry.id}
-                      style={{ borderBottom: '1px solid var(--border)', cursor: !isAdmin && entry.status === 'approved' ? 'default' : 'pointer', transition: 'background 0.1s' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = 'var(--bg-subtle)'}
+                      style={{ borderBottom: '1px solid var(--border)', cursor: canEdit ? 'pointer' : 'default', transition: 'background 0.1s' }}
+                      onMouseEnter={e => canEdit && ((e.currentTarget as HTMLTableRowElement).style.background = 'var(--bg-subtle)')}
                       onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'}
                       onClick={() => {
-                        if (!isAdmin && entry.status === 'approved') return;
+                        if (!canEdit) return
                         setEditingEntry({
-                        id: entry.id,
-                        project: entry.project,
-                        projectColor: entry.projectColor,
-                        projectId: entry.projectId,
-                        description: entry.description,
-                        date: entry.date,
-                        startTime: entry.startTime,
-                        endTime: entry.endTime,
-                        duration: entry.duration,
-                        status: entry.status,
+                          id: entry.id,
+                          project: entry.project,
+                          projectColor: entry.projectColor,
+                          projectId: entry.projectId,
+                          description: entry.description,
+                          date: entry.date,
+                          startTime: entry.startTime,
+                          endTime: entry.endTime,
+                          duration: entry.duration,
+                          status: entry.status,
                         })
                       }}
                     >
+                      {isAdmin && (
+                        <td style={{ padding: '13px 16px' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+                            <span style={{
+                              width: '26px', height: '26px', borderRadius: '50%',
+                              background: entry.memberColor ?? 'var(--accent)',
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '11px', fontWeight: 700, color: 'white', flexShrink: 0,
+                            }}>
+                              {entry.memberInitials ?? '?'}
+                            </span>
+                            <span style={{ fontSize: '13px', color: 'var(--text)', fontWeight: 500 }}>
+                              {entry.memberName ?? 'Unknown'}
+                            </span>
+                          </span>
+                        </td>
+                      )}
                       <td style={{ padding: '13px 16px' }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center',
@@ -302,7 +324,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
           }}>
             <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)', marginBottom: '16px' }}>
-              This Week
+              {isAdmin ? 'Team This Week' : 'This Week'}
             </div>
             {d.weekBars.map(day => {
               const maxHours = 8

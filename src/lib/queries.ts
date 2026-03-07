@@ -179,7 +179,7 @@ export async function insertTimeEntry(entry: {
 
 // ===== DASHBOARD =====
 
-export async function fetchDashboardStats() {
+export async function fetchDashboardStats(isAdmin = false) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
@@ -192,104 +192,74 @@ export async function fetchDashboardStats() {
   const lastWeekEnd = new Date(lastMonday.getTime() + 6 * 86400000).toISOString().slice(0, 10)
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
-  // Batch 1: all time-entry aggregates + role check in parallel
+  // Admins see org-wide totals; members see only their own entries.
+  // Build the base queries then conditionally add the user_id filter.
+  let weekQ      = supabase.from('time_entries').select('duration_minutes, date, project_id').gte('date', weekStart).lte('date', weekEnd)
+  let lastWeekQ  = supabase.from('time_entries').select('duration_minutes').gte('date', lastWeekStart).lte('date', lastWeekEnd)
+  let monthQ     = supabase.from('time_entries').select('duration_minutes').gte('date', monthStart)
+  if (!isAdmin) {
+    weekQ     = weekQ.eq('user_id', user.id)
+    lastWeekQ = lastWeekQ.eq('user_id', user.id)
+    monthQ    = monthQ.eq('user_id', user.id)
+  }
+
   const [
     { data: weekEntries, error: weekErr },
     { data: lastWeekEntries },
     { data: monthEntries, error: monthErr },
-    { data: profileData },
+    projectCountResult,
+    pendingCountResult,
   ] = await Promise.all([
-    supabase
-      .from('time_entries')
-      .select('duration_minutes, date, project_id')
-      .eq('user_id', user.id)
-      .gte('date', weekStart)
-      .lte('date', weekEnd),
-    supabase
-      .from('time_entries')
-      .select('duration_minutes')
-      .eq('user_id', user.id)
-      .gte('date', lastWeekStart)
-      .lte('date', lastWeekEnd),
-    supabase
-      .from('time_entries')
-      .select('duration_minutes')
-      .eq('user_id', user.id)
-      .gte('date', monthStart),
-    supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single(),
+    weekQ,
+    lastWeekQ,
+    monthQ,
+    // Admins: all active projects org-wide; members: their assigned projects
+    isAdmin
+      ? supabase.from('projects').select('*', { count: 'exact', head: true }).in('status', ['active', 'on-hold']).is('deleted_at', null)
+      : supabase.from('project_members').select('project_id, projects!inner(status, deleted_at)', { count: 'exact', head: true })
+          .eq('user_id', user.id).in('projects.status', ['active', 'on-hold']).is('projects.deleted_at', null),
+    // Admins: all pending submissions; members: own pending timesheets
+    isAdmin
+      ? supabase.from('approvals').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+      : supabase.from('approvals').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'pending'),
   ])
 
   if (weekErr) throw new Error(weekErr.message)
   if (monthErr) throw new Error(monthErr.message)
-
-  const admin = profileData?.role === 'Admin'
-
-  // Batch 2: project count + pending approvals in parallel
-  const [projectCountResult, pendingCountResult] = await Promise.all([
-    admin
-      ? supabase
-          .from('projects')
-          .select('*', { count: 'exact', head: true })
-          .eq('created_by', user.id)
-          .in('status', ['active', 'on-hold'])
-          .is('deleted_at', null)
-      : supabase
-          .from('project_members')
-          .select('project_id, projects!inner(status, deleted_at)', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .in('projects.status', ['active', 'on-hold'])
-          .is('projects.deleted_at', null),
-    // Admins see total pending submissions from their whole team.
-    // Non-admins see how many of their own timesheets are pending.
-    admin
-      ? supabase
-          .from('approvals')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending')
-      : supabase
-          .from('approvals')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
-          .eq('status', 'pending'),
-  ])
-
   if (projectCountResult.error) throw new Error(projectCountResult.error.message)
   if (pendingCountResult.error) throw new Error(pendingCountResult.error.message)
 
-  const projectCount = projectCountResult.count ?? 0
-  const pendingCount = pendingCountResult.count ?? 0
-
-  const weekMins = (weekEntries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
-  const monthMins = (monthEntries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
+  const weekMins     = (weekEntries     ?? []).reduce((s, e) => s + e.duration_minutes, 0)
+  const monthMins    = (monthEntries    ?? []).reduce((s, e) => s + e.duration_minutes, 0)
   const lastWeekMins = (lastWeekEntries ?? []).reduce((s, e) => s + e.duration_minutes, 0)
 
   return {
-    weekHours: Math.round((weekMins / 60) * 10) / 10,
+    weekHours:     Math.round((weekMins     / 60) * 10) / 10,
     lastWeekHours: Math.round((lastWeekMins / 60) * 10) / 10,
-    monthHours: Math.round((monthMins / 60) * 10) / 10,
-    projectCount: projectCount ?? 0,
-    pendingCount: pendingCount ?? 0,
-    weekEntries: weekEntries ?? [],
+    monthHours:    Math.round((monthMins    / 60) * 10) / 10,
+    projectCount:  projectCountResult.count ?? 0,
+    pendingCount:  pendingCountResult.count  ?? 0,
+    weekEntries:   weekEntries ?? [],
     weekStart,
   }
 }
 
-export async function fetchRecentEntries() {
+export async function fetchRecentEntries(isAdmin = false) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('time_entries')
-    .select(`*, projects (name, color)`)
-    .eq('user_id', user.id)
+    .select(`*, projects (name, color), profiles (full_name, initials, color)`)
     .order('date', { ascending: false })
     .order('start_time', { ascending: false })
-    .limit(5)
+    .limit(isAdmin ? 10 : 5)
 
+  if (!isAdmin) {
+    query = query.eq('user_id', user.id)
+  }
+
+  const { data, error } = await query
   if (error) throw new Error(error.message)
 
   return data.map(e => ({
@@ -304,6 +274,10 @@ export async function fetchRecentEntries() {
     endTime: e.end_time ?? '00:00',
     duration: minsToDisplay(e.duration_minutes),
     status: e.status as 'approved' | 'pending' | 'draft',
+    memberName:     (e.profiles as any)?.full_name ?? null as string | null,
+    memberInitials: (e.profiles as any)?.initials  ?? null as string | null,
+    memberColor:    (e.profiles as any)?.color     ?? null as string | null,
+    isOwn: e.user_id === user.id,
   }))
 }
 
