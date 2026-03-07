@@ -290,9 +290,11 @@ export default function Projects() {
                 background: viewMode === mode ? 'var(--accent)' : 'transparent',
                 color: viewMode === mode ? 'white' : 'var(--text-muted)',
                 fontSize: 12, fontWeight: 600, transition: 'all 0.15s',
+                display: 'flex', alignItems: 'center', gap: 5,
               }}
             >
               {mode === 'grid' ? '⊞' : '≡'}
+              <span>{mode === 'grid' ? 'Grid' : 'By Client'}</span>
             </button>
           ))}
         </div>

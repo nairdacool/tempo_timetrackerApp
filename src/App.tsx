@@ -21,7 +21,7 @@ import Organizations from './pages/Organizations'
 import Settings from './pages/Settings'
 
 function AuthenticatedApp() {
-  const { user, loading, signOut, isAdmin } = useAuth()
+  const { user, loading, profile, signOut, isAdmin } = useAuth()
   const [pendingCount, setPendingCount] = useState(0)
   const [needsPassword, setNeedsPassword] = useState(_isInviteLink)
   const navigate = useNavigate()
@@ -118,8 +118,19 @@ function AuthenticatedApp() {
     }} />
   }
 
-  // Redirect non-admins away from admin pages
+  // Redirect non-admins away from admin pages.
+  // Wait until profile has resolved — profile is fetched async after the session
+  // resolves, so isAdmin is briefly false even for admins. Without this guard,
+  // refreshing on an admin page redirects the admin to /dashboard before the
+  // profile finishes loading.
   const adminOnly = ['/approvals', '/team', '/organizations']
+  if (user && profile === null && adminOnly.includes(location.pathname)) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '24px', color: 'var(--text-muted)' }}>Loading…</div>
+      </div>
+    )
+  }
   if (!isAdmin && adminOnly.includes(location.pathname)) {
     return <Navigate to="/dashboard" replace />
   }
