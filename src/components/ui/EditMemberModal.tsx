@@ -4,17 +4,21 @@ import { fetchOrganizations, addMemberToOrg, removeMemberFromOrg } from '../../l
 
 interface EditMemberModalProps {
   member:   Member
-  onSave:   (id: string, updates: { role?: string; is_active?: boolean }) => Promise<void>
+  onSave:   (id: string, updates: { role?: string; is_active?: boolean; full_name?: string; initials?: string; color?: string }) => Promise<void>
   onClose:  () => void
 }
 
 const roleOptions = ['Admin', 'Developer', 'Designer', 'Other']
 const predefinedRoles = new Set(roleOptions)
+const colorSwatches = ['#c8602a','#2a5fa8','#2a7a4f','#8b2ac8','#c8a12a','#c82a6b','#2ab5c8','#6b7280']
 
 export default function EditMemberModal({ member, onSave, onClose }: EditMemberModalProps) {
   const isCustom = !predefinedRoles.has(member.role)
   const [role,       setRole]       = useState(isCustom ? 'Other' : member.role)
   const [customRole, setCustomRole] = useState(isCustom ? member.role : '')
+  const [fullName,   setFullName]   = useState(member.name)
+  const [initials,   setInitials]   = useState(member.initials)
+  const [color,      setColor]      = useState(member.color)
   const [saving,     setSaving]     = useState(false)
   const [error,      setError]      = useState<string | null>(null)
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
@@ -30,7 +34,12 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
   async function handleSave() {
     try {
       setSaving(true)
-      await onSave(member.id, { role: effectiveRole })
+      await onSave(member.id, {
+        role:      effectiveRole,
+        full_name: fullName.trim() || member.name,
+        initials:  initials.trim().slice(0, 2).toUpperCase() || member.initials,
+        color,
+      })
       // Update org assignment
       if (orgId) {
         await addMemberToOrg(orgId, member.id)
@@ -79,15 +88,15 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
           <div style={{
             width: '44px', height: '44px', borderRadius: '50%',
-            background: member.color,
+            background: color,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '16px', fontWeight: 700, color: 'white', flexShrink: 0,
           }}>
-            {member.initials}
+            {initials.slice(0,2).toUpperCase() || member.initials}
           </div>
           <div>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '18px', color: 'var(--text)' }}>
-              {member.name}
+              {fullName || member.name}
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{member.email}</div>
           </div>
@@ -110,6 +119,55 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
             ⚠️ {error}
           </div>
         )}
+
+        {/* Name + Initials */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>Full Name</label>
+            <input
+              data-testid="input-full-name"
+              type="text"
+              value={fullName}
+              onChange={e => {
+                setFullName(e.target.value)
+                // auto-derive initials from first letters of each word
+                const parts = e.target.value.trim().split(/\s+/)
+                if (parts.length >= 2) setInitials((parts[0][0] + parts[parts.length - 1][0]).toUpperCase())
+              }}
+              style={inputStyle}
+            />
+          </div>
+          <div style={{ width: '80px' }}>
+            <label style={labelStyle}>Initials</label>
+            <input
+              data-testid="input-initials"
+              type="text"
+              maxLength={2}
+              value={initials}
+              onChange={e => setInitials(e.target.value.toUpperCase())}
+              style={{ ...inputStyle, textAlign: 'center', textTransform: 'uppercase' }}
+            />
+          </div>
+        </div>
+
+        {/* Color */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>Avatar Color</label>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {colorSwatches.map(c => (
+              <button
+                key={c}
+                onClick={() => setColor(c)}
+                style={{
+                  width: '28px', height: '28px', borderRadius: '50%',
+                  background: c, border: 'none', cursor: 'pointer',
+                  outline: color === c ? `3px solid var(--accent)` : '3px solid transparent',
+                  outlineOffset: '2px', transition: 'outline 0.15s',
+                }}
+              />
+            ))}
+          </div>
+        </div>
 
         {/* Role selector */}
         <div style={{ marginBottom: '20px' }}>
@@ -155,35 +213,22 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
           )}
         </div>
 
-        {/* Member status */}
-        <div style={{
-          background: 'var(--bg-subtle)', borderRadius: '10px',
-          padding: '14px 16px', marginBottom: '20px',
-        }}>
-          {/* Organization */}
-          {orgs.length > 0 && (
-            <div style={{ marginBottom: '16px' }}>
-              <label style={labelStyle}>Organization</label>
-              <select
-                value={orgId}
-                onChange={e => setOrgId(e.target.value)}
-                style={{
-                  width: '100%', fontFamily: 'var(--font-body)',
-                  fontSize: '13.5px', color: 'var(--text)',
-                  background: 'var(--bg-subtle)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px', padding: '9px 12px',
-                  outline: 'none', boxSizing: 'border-box',
-                }}
-              >
-                <option value=''>— None —</option>
-                {orgs.map(o => (
-                  <option key={o.id} value={o.id}>{o.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
+        {/* Organization — only render when orgs are available */}
+        {orgs.length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <label style={labelStyle}>Organization</label>
+            <select
+              value={orgId}
+              onChange={e => setOrgId(e.target.value)}
+              style={inputStyle}
+            >
+              <option value=''>— None —</option>
+              {orgs.map(o => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Member status */}
         <div style={{
@@ -286,4 +331,13 @@ const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: '11px', fontWeight: 700,
   color: 'var(--text-muted)', textTransform: 'uppercase',
   letterSpacing: '0.4px', marginBottom: '8px',
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', fontFamily: 'var(--font-body)',
+  fontSize: '13.5px', color: 'var(--text)',
+  background: 'var(--bg-subtle)',
+  border: '1px solid var(--border)',
+  borderRadius: '8px', padding: '9px 12px',
+  outline: 'none', boxSizing: 'border-box',
 }

@@ -129,7 +129,7 @@ export function useTeam() {
         }
     }
 
-    async function updateMember(id: string, updates: { role?: string; is_active?: boolean }) {
+    async function updateMember(id: string, updates: { role?: string; is_active?: boolean; full_name?: string; initials?: string; color?: string }) {
         const { error } = await supabase
             .from('profiles')
             .update(updates)
