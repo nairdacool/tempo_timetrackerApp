@@ -196,6 +196,48 @@ export default function Sidebar({
         })}
       </nav>
 
+      {/* Help Center */}
+      <div style={{ padding: "8px 8px 0", borderTop: "1px solid var(--border)" }}>
+        <button
+          data-testid="btn-help-center"
+          onClick={() => window.open('/admin-manual.html', '_blank')}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            width: "100%",
+            padding: "8px 10px",
+            borderRadius: "8px",
+            border: "none",
+            background: "transparent",
+            color: "var(--text-muted)",
+            fontFamily: "var(--font-body)",
+            fontSize: "13px",
+            fontWeight: 500,
+            cursor: "pointer",
+            textAlign: "left",
+            transition: "all 0.15s",
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--bg-subtle)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--text)";
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--text-muted)";
+          }}
+        >
+          <span style={{ width: "18px", flexShrink: 0, display: "flex" }}>
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+              <circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="currentColor" strokeWidth={1} />
+            </svg>
+          </span>
+          Help Center
+        </button>
+      </div>
+
       {/* User */}
       <div
         style={{ padding: "12px 16px", borderTop: "1px solid var(--border)" }}
