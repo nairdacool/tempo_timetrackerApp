@@ -1,0 +1,22 @@
+name: Trigger E2E Regression
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  dispatch:
+    name: Notify test repo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch regression to tempo_e2e_playwright_timetracker
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.E2E_DISPATCH_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: 'nairdacool',
+              repo: 'tempo_e2e_playwright_timetracker',
+              event_type: 'app-deployed',
+            });
