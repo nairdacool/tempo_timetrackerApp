@@ -110,7 +110,10 @@ function AuthenticatedApp() {
     </div>
   )
 
-  if (!user) return <Login />
+  if (!user) {
+    window.history.replaceState({}, '', '/')
+    return <Login />
+  }
 
   if (needsPassword) {
     return <SetPassword onDone={() => {
