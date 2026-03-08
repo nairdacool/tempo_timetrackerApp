@@ -138,6 +138,17 @@ export function useTeam() {
         await load()
     }
 
+    async function deleteMember(id: string) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) throw new Error('Not authenticated')
+        const { error } = await supabase.functions.invoke('delete-member', {
+            body: { userId: id },
+            headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+        if (error) throw new Error(error.message)
+        await load()
+    }
+
     useEffect(() => {
         load()
         const interval = setInterval(load, 180 * 1000) // refresh every 180 seconds
@@ -145,7 +156,7 @@ export function useTeam() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
-    return { members, loading, error, updateMember, refresh: load }
+    return { members, loading, error, updateMember, deleteMember, refresh: load }
 }
 
 function getThisMonday(date: Date): Date {

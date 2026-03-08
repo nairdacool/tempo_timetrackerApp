@@ -5,6 +5,7 @@ import { fetchOrganizations, addMemberToOrg, removeMemberFromOrg } from '../../l
 interface EditMemberModalProps {
   member:   Member
   onSave:   (id: string, updates: { role?: string; is_active?: boolean; full_name?: string; initials?: string; color?: string }) => Promise<void>
+  onDelete: (id: string) => Promise<void>
   onClose:  () => void
 }
 
@@ -12,7 +13,7 @@ const roleOptions = ['Admin', 'Developer', 'Designer', 'Other']
 const predefinedRoles = new Set(roleOptions)
 const colorSwatches = ['#c8602a','#2a5fa8','#2a7a4f','#8b2ac8','#c8a12a','#c82a6b','#2ab5c8','#6b7280']
 
-export default function EditMemberModal({ member, onSave, onClose }: EditMemberModalProps) {
+export default function EditMemberModal({ member, onSave, onDelete, onClose }: EditMemberModalProps) {
   const isCustom = !predefinedRoles.has(member.role)
   const [role,       setRole]       = useState(isCustom ? 'Other' : member.role)
   const [customRole, setCustomRole] = useState(isCustom ? member.role : '')
@@ -22,6 +23,7 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
   const [saving,     setSaving]     = useState(false)
   const [error,      setError]      = useState<string | null>(null)
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
+  const [confirmDelete,     setConfirmDelete]     = useState(false)
   const [orgs,  setOrgs]  = useState<Organization[]>([])
   const [orgId, setOrgId] = useState<string>(member.organizationId ?? '')
 
@@ -61,6 +63,18 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update')
       setSaving(false)
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      setSaving(true)
+      await onDelete(member.id)
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete user')
+      setSaving(false)
+      setConfirmDelete(false)
     }
   }
 
@@ -244,83 +258,158 @@ export default function EditMemberModal({ member, onSave, onClose }: EditMemberM
               {member.isActive ? 'Member has full access' : 'Member is deactivated'}
             </div>
           </div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            fontSize: '12px', fontWeight: 600,
-            color: member.isActive ? 'var(--green)' : 'var(--text-muted)',
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
-              width: '8px', height: '8px', borderRadius: '50%',
-              background: member.isActive ? 'var(--green)' : 'var(--border)',
-            }} />
-            {member.isActive ? 'Active' : 'Deactivated'}
+              display: 'flex', alignItems: 'center', gap: '6px',
+              fontSize: '12px', fontWeight: 600,
+              color: member.isActive ? 'var(--green)' : 'var(--text-muted)',
+            }}>
+              <div style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                background: member.isActive ? 'var(--green)' : 'var(--border)',
+              }} />
+              {member.isActive ? 'Active' : 'Deactivated'}
+            </div>
+            {confirmDeactivate ? (
+              <>
+                <button
+                  data-testid={member.isActive ? 'btn-confirm-deactivate' : 'btn-confirm-activate'}
+                  onClick={handleToggleActive}
+                  disabled={saving}
+                  style={{
+                    padding: '5px 10px', borderRadius: '6px',
+                    background: member.isActive ? '#c03030' : 'var(--green)',
+                    color: 'white', border: 'none',
+                    fontFamily: 'var(--font-body)', fontSize: '11px',
+                    fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {member.isActive ? 'Confirm' : 'Confirm'}
+                </button>
+                <button
+                  onClick={() => setConfirmDeactivate(false)}
+                  style={{
+                    padding: '5px 10px', borderRadius: '6px',
+                    background: 'transparent', color: 'var(--text-muted)',
+                    border: '1px solid var(--border)',
+                    fontFamily: 'var(--font-body)', fontSize: '11px',
+                    fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                data-testid={member.isActive ? 'btn-deactivate' : 'btn-reactivate'}
+                onClick={() => setConfirmDeactivate(true)}
+                style={{
+                  padding: '5px 10px', borderRadius: '6px',
+                  background: 'transparent',
+                  color: member.isActive ? 'var(--text-muted)' : 'var(--green)',
+                  border: '1px solid var(--border)',
+                  fontFamily: 'var(--font-body)', fontSize: '11px',
+                  fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                }}
+              >
+                {member.isActive ? 'Deactivate' : 'Reactivate'}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {confirmDeactivate ? (
-            <button
-              data-testid={member.isActive ? 'btn-confirm-deactivate' : 'btn-confirm-activate'}
-              onClick={handleToggleActive}
-              disabled={saving}
-              style={{
-                padding: '7px 14px', borderRadius: '8px',
-                background: member.isActive ? '#c03030' : 'var(--green)',
-                color: 'white', border: 'none',
-                fontFamily: 'var(--font-body)', fontSize: '13px',
-                fontWeight: 600, cursor: 'pointer',
-              }}
-            >
-              {member.isActive ? 'Confirm deactivate' : 'Confirm activate'}
-            </button>
+        {/* Footer — single row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Delete user — left side */}
+          {confirmDelete ? (
+            <>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                Permanently delete?
+              </span>
+              <button
+                data-testid="btn-confirm-delete"
+                onClick={handleDelete}
+                disabled={saving}
+                style={{
+                  padding: '6px 14px', borderRadius: '8px',
+                  background: '#c03030', color: 'white',
+                  border: 'none', fontFamily: 'var(--font-body)',
+                  fontSize: '12px', fontWeight: 600,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {saving ? 'Deleting…' : 'Yes, delete'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{
+                  padding: '6px 12px', borderRadius: '8px',
+                  background: 'transparent', color: 'var(--text-muted)',
+                  border: '1px solid var(--border)',
+                  fontFamily: 'var(--font-body)', fontSize: '12px',
+                  fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </>
           ) : (
             <button
-              data-testid={member.isActive ? 'btn-deactivate' : 'btn-reactivate'}
-              onClick={() => setConfirmDeactivate(true)}
+              data-testid="btn-delete-user"
+              onClick={() => setConfirmDelete(true)}
               style={{
-                padding: '7px 14px', borderRadius: '8px',
-                background: 'transparent',
-                color: member.isActive ? '#c03030' : 'var(--green)',
-                border: `1px solid ${member.isActive ? '#f5c0c0' : 'var(--green-light)'}`,
-                fontFamily: 'var(--font-body)', fontSize: '13px',
-                fontWeight: 600, cursor: 'pointer',
+                padding: '0', background: 'transparent', border: 'none',
+                color: 'var(--text-muted)', fontFamily: 'var(--font-body)',
+                fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '4px',
+                transition: 'color 0.15s',
               }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = '#c03030' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)' }}
             >
-              {member.isActive ? 'Deactivate' : 'Reactivate'}
+              <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete user
             </button>
           )}
 
           <div style={{ flex: 1 }} />
 
-          <button
-            data-testid="btn-cancel"
-            onClick={onClose}
-            style={{
-              padding: '7px 16px', borderRadius: '8px',
-              background: 'transparent', color: 'var(--text-muted)',
-              border: '1px solid var(--border)',
-              fontFamily: 'var(--font-body)', fontSize: '13px',
-              fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            data-testid="btn-save-changes"
-            onClick={handleSave}
-            disabled={saving}
-            style={{
-              padding: '7px 20px', borderRadius: '8px',
-              background: !saving ? 'var(--accent)' : 'var(--bg-subtle)',
-              color: !saving ? 'white' : 'var(--text-muted)',
-              border: 'none', fontFamily: 'var(--font-body)',
-              fontSize: '13px', fontWeight: 600,
-              cursor: !saving ? 'pointer' : 'not-allowed',
-            }}
-          >
-            {saving ? 'Saving…' : 'Save Changes'}
-          </button>
+          {/* Primary actions — right side */}
+          {!confirmDelete && (
+            <>
+              <button
+                data-testid="btn-cancel"
+                onClick={onClose}
+                style={{
+                  padding: '8px 18px', borderRadius: '8px',
+                  background: 'transparent', color: 'var(--text-muted)',
+                  border: '1px solid var(--border)',
+                  fontFamily: 'var(--font-body)', fontSize: '13px',
+                  fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                data-testid="btn-save-changes"
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                  padding: '8px 22px', borderRadius: '8px',
+                  background: !saving ? 'var(--accent)' : 'var(--bg-subtle)',
+                  color: !saving ? 'white' : 'var(--text-muted)',
+                  border: 'none', fontFamily: 'var(--font-body)',
+                  fontSize: '13px', fontWeight: 600,
+                  cursor: !saving ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

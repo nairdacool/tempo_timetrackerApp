@@ -16,7 +16,7 @@ export default function Team() {
   const [hideInactive,   setHideInactive]   = useState(true);
   const { profile }                         = useAuth();
   const isAdmin                             = profile?.role === 'Admin';
-  const { members, loading, error, updateMember, refresh } = useTeam();
+  const { members, loading, error, updateMember, deleteMember, refresh } = useTeam();
   const [editingMember,  setEditingMember]  = useState<Member | null>(null);
 
   const roles = ["All Roles", "Admin", "Developer", "Designer", "Engineer"];
@@ -242,6 +242,7 @@ export default function Team() {
         <EditMemberModal
           member={editingMember}
           onSave={updateMember}
+          onDelete={async (id) => { await deleteMember(id); setEditingMember(null) }}
           onClose={() => setEditingMember(null)}
         />
       )}
