@@ -140,7 +140,7 @@ function AuthenticatedApp() {
     <Layout
       onNavigate={(path) => navigate(path)}
       pendingCount={pendingCount}
-      onSignOut={signOut}
+      onSignOut={async () => { await signOut(); navigate('/', { replace: true }) }}
       userEmail={user.email ?? ''}
     >
       <Routes>
