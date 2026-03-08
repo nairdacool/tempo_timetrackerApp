@@ -88,6 +88,7 @@ export default function Login() {
           .single()
         if (profile && !profile.is_active) {
           await supabase.auth.signOut()
+          window.history.replaceState({}, '', '/')
           setError('Your account has been deactivated. Please contact your administrator.')
         }
       }
