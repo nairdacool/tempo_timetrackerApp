@@ -76,8 +76,21 @@ export default function Login() {
       if (error) setError(error.message)
       else setSuccess('Account created! Check your email to confirm, then log in.')
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(error.message)
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setError(error.message)
+      } else if (data.user) {
+        // Check is_active before allowing the session to persist
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_active')
+          .eq('id', data.user.id)
+          .single()
+        if (profile && !profile.is_active) {
+          await supabase.auth.signOut()
+          setError('Your account has been deactivated. Please contact your administrator.')
+        }
+      }
     }
     setLoading(false)
   }
